@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
-	"willstclair.com/phosphorus/classifier"
 	"willstclair.com/phosphorus/florida"
 	"willstclair.com/phosphorus/vector"
 )
@@ -47,8 +46,8 @@ var action string
 var inGlob string
 var force bool
 var Config Configuration
-var records chan classifier.Record
-var c classifier.Classifier
+var records chan vector.Record
+var c vector.Classifier
 var HashFamily [][]vector.HashVector
 
 func init() {
@@ -62,7 +61,7 @@ func init() {
 	flag.StringVar(&inGlob, "in", "", "files to process")
 	flag.BoolVar(&force, "f", false, "force overwrite of existing workspace data")
 
-	records = make(chan classifier.Record)
+	records = make(chan vector.Record)
 }
 
 func readConfiguration() {
@@ -129,7 +128,7 @@ func TrainClassifier() {
 	}
 }
 
-func readRecordFile(filename string, records chan classifier.Record) error {
+func readRecordFile(filename string, records chan vector.Record) error {
 	file, err := os.Open(filename)
 	if err != nil {
 		return err
