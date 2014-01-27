@@ -119,3 +119,42 @@ func TestVectorize(t *testing.T) {
 	_assertFloat(t, 0.4054651081081644, v.Component(3), "v[3]")
 	_assertFloat(t, 0, v.Component(4), "v[4]")
 }
+
+func TestHash(t *testing.T) {
+}
+
+func TestSignature(t *testing.T) {
+	tv := Vector{0.2, 0.3, 0.4, 0.5, 0.6}
+
+	hv := []Interface{
+		&Vector{1.0, -1.0, 0.0, 0.0, 0.0}, // 0.2 + -0.3 = -0.1
+		&Vector{0.0, 1.0, 0.0, -1.0, 0.0}, // 0.3 + -0.4 = -0.1
+		&Vector{-1.0, 0.0, 1.0, 0.0, 0.0}, // -0.2 + 0.4 = 0.2
+		&Vector{0.0, -1.0, 0.0, 0.0, 1.0}} // -0.3 + 0.6 = 0.6
+
+	sig, _ := Signature(tv, hv)
+	if sig != 0xc {
+		t.Errorf("Incorrect hash signature")
+	}
+}
+
+func TestSignatureSet(t *testing.T) {
+	tv := Vector{0.2, 0.3, 0.4, 0.5, 0.6}
+
+	hf := [][]Interface{
+		[]Interface{
+			&Vector{1.0, -1.0, 0.0, 0.0, 0.0}, // 0.2 + -0.3 = -0.1
+			&Vector{0.0, 1.0, 0.0, -1.0, 0.0}, // 0.3 + -0.4 = -0.1
+			&Vector{-1.0, 0.0, 1.0, 0.0, 0.0}, // -0.2 + 0.4 = 0.2
+			&Vector{0.0, -1.0, 0.0, 0.0, 1.0}}, // -0.3 + 0.6 = 0.6
+		[]Interface{
+			&Vector{1.0, -1.0, 0.0, 0.0, 0.0}, // 0.2 + -0.3 = -0.1
+			&Vector{-1.0, 0.0, 1.0, 0.0, 0.0}, // -0.2 + 0.4 = 0.2
+			&Vector{0.0, 1.0, 0.0, -1.0, 0.0}, // 0.3 + -0.4 = -0.1
+			&Vector{0.0, -1.0, 0.0, 0.0, 1.0}}} // -0.3 + 0.6 = 0.6
+
+	sigset, _ := SignatureSet(tv, hf)
+	if sigset[0] != 0xc || sigset[1] != 0xa {
+		t.Errorf("%s", "Incorrect signature set")
+	}
+}

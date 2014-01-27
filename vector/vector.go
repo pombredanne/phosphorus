@@ -187,7 +187,7 @@ func Hash(x Interface, r Interface) (bool, error) {
 	return dot >= 0.0, nil
 }
 
-func Signature(x Interface, r ...Interface) (uint16, error) {
+func Signature(x Interface, r []Interface) (uint16, error) {
 	sig := uint16(0)
 	for i, ri := range r {
 		hash, err := Hash(x, ri)
@@ -311,4 +311,15 @@ func (c *Classifier) Listen(records chan Record) {
 	for r := range records {
 		c.Classify(r)
 	}
+}
+
+func SignatureSet(r Interface, hf [][]Interface) ([]uint16, error) {
+	var signatures = make([]uint16, len(hf))
+	var err error
+
+	for i, h := range hf {
+		signatures[i], err = Signature(r, h)
+		if err != nil { return signatures, err }
+	}
+	return signatures, nil
 }
