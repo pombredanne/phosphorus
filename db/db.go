@@ -2,10 +2,10 @@ package db
 
 import (
 	"encoding/binary"
-	"log"
-	"time"
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/dynamodb"
+	"log"
+	"time"
 )
 
 var SignatureTableDescription = dynamodb.TableDescriptionT{
@@ -16,9 +16,9 @@ var SignatureTableDescription = dynamodb.TableDescriptionT{
 	KeySchema: []dynamodb.KeySchemaT{
 		dynamodb.KeySchemaT{
 			AttributeName: "s",
-			KeyType: "HASH"}},
+			KeyType:       "HASH"}},
 	ProvisionedThroughput: dynamodb.ProvisionedThroughputT{
-		ReadCapacityUnits: 10,
+		ReadCapacityUnits:  10,
 		WriteCapacityUnits: 10},
 	TableName: "signature"}
 
@@ -30,19 +30,20 @@ var RecordTableDescription = dynamodb.TableDescriptionT{
 	KeySchema: []dynamodb.KeySchemaT{
 		dynamodb.KeySchemaT{
 			AttributeName: "id",
-			KeyType: "HASH"}},
+			KeyType:       "HASH"}},
 	ProvisionedThroughput: dynamodb.ProvisionedThroughputT{
-		ReadCapacityUnits: 10,
+		ReadCapacityUnits:  10,
 		WriteCapacityUnits: 10},
 	TableName: "record"}
-
 
 func NewServer(accessKeyId string, secretAccessKey string, region aws.Region) *dynamodb.Server {
 	now := time.Now()
 	expires := now.Add(time.Duration(60) * time.Minute)
 
 	token, err := aws.GetAuth(accessKeyId, secretAccessKey, "", expires)
-	if err != nil { return false }
+	if err != nil {
+		return false
+	}
 
 	return &dynamodb.Server{token, region}
 }
@@ -50,8 +51,10 @@ func NewServer(accessKeyId string, secretAccessKey string, region aws.Region) *d
 func CreateTable() {
 	pk, _ := tableDescription.BuildPrimaryKey()
 	table, err := Server.CreateTable(tableDescription)
-	if err != nil { panic(err) }
-	Table = dynamodb.Table{&Server,table,pk}
+	if err != nil {
+		panic(err)
+	}
+	Table = dynamodb.Table{&Server, table, pk}
 }
 
 func LoadItUp() {
@@ -62,6 +65,8 @@ func LoadItUp() {
 		key.HashKey = string(signature[:2])
 		Table.UpdateAttributes(key,
 			[]dynamodb.Attribute{*dynamodb.NewStringAttribute("a", "b")})
-		if i % 100000 == 0 { log.Println(i) }
+		if i%100000 == 0 {
+			log.Println(i)
+		}
 	}
 }

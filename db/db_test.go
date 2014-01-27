@@ -25,9 +25,7 @@ var DummyRegion = aws.Region{
 	"https://elasticloadbalancing.us-east-1.amazonaws.com",
 	"http://localhost:8000",
 	aws.ServiceInfo{"https://monitoring.us-east-1.amazonaws.com", aws.V2Signature},
-	"https://autoscaling.us-east-1.amazonaws.com" }
-
-
+	"https://autoscaling.us-east-1.amazonaws.com"}
 
 // func startDynamoDB() {
 // 	dynamoDBServer = exec.Command(

@@ -14,7 +14,7 @@ var candidateSets = [][]uint{
 	[]uint{100, 20, 10, 30, 70},
 	[]uint{80, 10}}
 
-func TestCandidate (t *testing.T) {
+func TestCandidate(t *testing.T) {
 	var candidateHeaps []*CandidateHeap
 	for i, candidateSet := range candidateSets {
 		candidateHeap := &CandidateHeap{}

@@ -1,16 +1,16 @@
 package main
 
 import (
+	"bufio"
+	"encoding/gob"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sync"
-	"fmt"
-	"bufio"
-	"encoding/gob"
 	"willstclair.com/phosphorus/classifier"
 	"willstclair.com/phosphorus/florida"
 	"willstclair.com/phosphorus/vector"
@@ -29,17 +29,17 @@ const BANNER = `
 `
 
 type _Aws struct {
-	AccessKeyID     string
-	SecretAccessKey string
+	AccessKeyID      string
+	SecretAccessKey  string
 	DynamoDBLocalDir string
 }
 
 type Configuration struct {
-	MaxProcs int
+	MaxProcs         int
 	WorkingDirectory string
-	SignatureCount int
-	SignatureBits int
-	AWS    _Aws
+	SignatureCount   int
+	SignatureBits    int
+	AWS              _Aws
 }
 
 var configPath string
@@ -67,7 +67,9 @@ func init() {
 
 func readConfiguration() {
 	file, err := os.Open(configPath)
-	if err != nil { log.Fatalf("Could not open %s: %s", configPath, err) }
+	if err != nil {
+		log.Fatalf("Could not open %s: %s", configPath, err)
+	}
 	defer file.Close()
 
 	err = json.NewDecoder(file).Decode(&Config)
@@ -78,14 +80,18 @@ func readConfiguration() {
 
 func loadClassifier() error {
 	file, err := os.Open(Config.WorkingDirectory + "/classifier")
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	defer file.Close()
 	return gob.NewDecoder(file).Decode(&c)
 }
 
 func saveClassifier() error {
 	file, err := os.Create(Config.WorkingDirectory + "/classifier")
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	defer file.Close()
 	return gob.NewEncoder(file).Encode(&c)
 }
@@ -106,7 +112,9 @@ func TrainClassifier() {
 		filename := filename
 		go func() {
 			err := readRecordFile(filename, records)
-			if err != nil { panic(err) }
+			if err != nil {
+				panic(err)
+			}
 			wait.Done()
 		}()
 	}
@@ -116,12 +124,16 @@ func TrainClassifier() {
 
 	log.Printf("File load complete. Dimensions: %d", c.Dimension())
 	err = saveClassifier()
-	if err != nil { log.Fatalf("saving classifier failed: %s", err) }
+	if err != nil {
+		log.Fatalf("saving classifier failed: %s", err)
+	}
 }
 
 func readRecordFile(filename string, records chan classifier.Record) error {
 	file, err := os.Open(filename)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
@@ -134,7 +146,9 @@ func readRecordFile(filename string, records chan classifier.Record) error {
 		}
 		records <- record
 	}
-	if err = scanner.Err(); err != nil { return err }
+	if err = scanner.Err(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -142,7 +156,9 @@ func GenerateHashFamily() {
 	var wait sync.WaitGroup
 
 	err := loadClassifier()
-	if err != nil { log.Fatalf("could not load classifier file: %s", err) }
+	if err != nil {
+		log.Fatalf("could not load classifier file: %s", err)
+	}
 	dim := c.Dimension()
 
 	log.Printf("Generating hash family with dimension: %d", dim)
@@ -153,7 +169,9 @@ func GenerateHashFamily() {
 		go func() {
 			err := generateHashFile(path, Config.SignatureBits, dim)
 			wait.Done()
-			if err != nil { panic(err) }
+			if err != nil {
+				panic(err)
+			}
 		}()
 	}
 	wait.Wait()
@@ -161,32 +179,38 @@ func GenerateHashFamily() {
 	log.Println("Hash family created.")
 }
 
-func generateHashFile (filename string, count int, dimension int) error {
+func generateHashFile(filename string, count int, dimension int) error {
 	file, err := os.Create(filename)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	defer file.Close()
 
 	enc := gob.NewEncoder(file)
 	for i := 0; i < count; i++ {
 		err := enc.Encode(vector.Random(dimension).(vector.HashVector))
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func LoadHashFamily () {
+func LoadHashFamily() {
 	var wait sync.WaitGroup
 
 	HashFamily = make([][]vector.HashVector, Config.SignatureCount)
 	for i := 0; i < Config.SignatureCount; i++ {
 		i := i
-		path := fmt.Sprintf(Config.WorkingDirectory + "/hash_%02x", i)
+		path := fmt.Sprintf(Config.WorkingDirectory+"/hash_%02x", i)
 		HashFamily[i] = make([]vector.HashVector, Config.SignatureBits)
 		wait.Add(1)
 		go func() {
 			err := loadHashFile(path, &HashFamily[i])
 			wait.Done()
-			if err != nil { panic(err) }
+			if err != nil {
+				panic(err)
+			}
 		}()
 	}
 
@@ -196,14 +220,22 @@ func LoadHashFamily () {
 
 func loadHashFile(filename string, hf *[]vector.HashVector) error {
 	file, err := os.Open(filename)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 
-	defer func() { if err := file.Close(); err != nil { panic(err) }}()
+	defer func() {
+		if err := file.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
 	dec := gob.NewDecoder(file)
 
 	for j := 0; j < Config.SignatureBits; j++ {
-		if err = dec.Decode(&(*hf)[j]); err != nil { return err }
+		if err = dec.Decode(&(*hf)[j]); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -211,7 +243,9 @@ func loadHashFile(filename string, hf *[]vector.HashVector) error {
 
 func Index() {
 	err := loadClassifier()
-	if err != nil { log.Fatalf("could not load classifier: %s", err) }
+	if err != nil {
+		log.Fatalf("could not load classifier: %s", err)
+	}
 	LoadHashFamily()
 }
 

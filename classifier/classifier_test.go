@@ -1,8 +1,8 @@
 package classifier
 
 import (
-	"testing"
 	"math"
+	"testing"
 )
 
 func _assertInt(t *testing.T, expected int, actual int, field string) {
@@ -12,7 +12,7 @@ func _assertInt(t *testing.T, expected int, actual int, field string) {
 }
 
 func _assertFloat(t *testing.T, expected float64, actual float64, field string) {
-	if math.Abs(expected - actual) > 0.0001 {
+	if math.Abs(expected-actual) > 0.0001 {
 		t.Errorf("Expected %s=%g, not %g", field, expected, actual)
 	}
 }
@@ -36,7 +36,7 @@ func TestFieldCountResizing(t *testing.T) {
 }
 
 func TestWeighting(t *testing.T) {
-	testValues := []interface{}{1,"a","a","a","c","a","a","a","a","a","c",1,1,"c","a","c"}
+	testValues := []interface{}{1, "a", "a", "a", "c", "a", "a", "a", "a", "a", "c", 1, 1, "c", "a", "c"}
 	f := new(Field)
 	for _, term := range testValues {
 		f.Add(term)
@@ -52,17 +52,20 @@ func TestWeighting(t *testing.T) {
 type dummyRecord struct {
 	f []interface{}
 }
+
 func (r dummyRecord) Fields() []interface{} {
 	return r.f
 }
 
 func TestVectorize(t *testing.T) {
 	testRecords := []dummyRecord{
-		dummyRecord{[]interface{}{"a",1}},
-		dummyRecord{[]interface{}{"b",1}},
-		dummyRecord{[]interface{}{"c",2}}}
+		dummyRecord{[]interface{}{"a", 1}},
+		dummyRecord{[]interface{}{"b", 1}},
+		dummyRecord{[]interface{}{"c", 2}}}
 	c := new(Classifier)
-	for _, r := range testRecords {	c.Classify(r) }
+	for _, r := range testRecords {
+		c.Classify(r)
+	}
 	v, _ := c.Vector(testRecords[0])
 	_assertFloat(t, 1.0986122886681096, v.Component(0), "v[0]")
 	_assertFloat(t, 0, v.Component(1), "v[1]")

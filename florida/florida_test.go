@@ -1,9 +1,9 @@
 package florida
 
 import (
+	"encoding/json"
 	"os"
 	"testing"
-	"encoding/json"
 )
 
 var sampleRecords []string
@@ -43,8 +43,8 @@ func TestSingleRecord(t *testing.T) {
 		t.Errorf("Error parsing party: %d != ", record.party, Democratic)
 	}
 
-	if record.telephone.areaCode != [3]byte{'5','5','5'} ||
-		record.telephone.number != [7]byte{'8','6','7','5','3','0','9'} {
+	if record.telephone.areaCode != [3]byte{'5', '5', '5'} ||
+		record.telephone.number != [7]byte{'8', '6', '7', '5', '3', '0', '9'} {
 		t.Errorf("Error parsing phone: %d", record.telephone.areaCode)
 	}
 }
@@ -80,8 +80,8 @@ var goodNumbers = []string{
 	"312/867.5309",
 	"1 312 867 5309"}
 
-var correctArea = [3]byte{'3','1','2'}
-var correctNumber = [7]byte{'8','6','7','5','3','0','9'}
+var correctArea = [3]byte{'3', '1', '2'}
+var correctNumber = [7]byte{'8', '6', '7', '5', '3', '0', '9'}
 
 func TestParsePhoneGood(t *testing.T) {
 	for _, num := range goodNumbers {

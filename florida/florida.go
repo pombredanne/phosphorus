@@ -13,11 +13,13 @@ import (
 )
 
 type Gender int
+
 const (
-	Male    Gender = iota
+	Male Gender = iota
 	Female
 	GenderUnknown
 )
+
 var GenderKey = map[string]Gender{
 	"M": Male,
 	"F": Female,
@@ -25,16 +27,19 @@ var GenderKey = map[string]Gender{
 }
 
 type Party int
+
 const (
 	Democratic Party = iota
 	Republican
 )
+
 var PartyKey = map[string]Party{
 	"DEM": Democratic,
 	"REP": Republican,
 }
 
 type Race int
+
 const (
 	AmericanIndianOrAlaskanNative Race = 1 + iota
 	AsianOrPacificIslander
@@ -45,6 +50,7 @@ const (
 	MultiRacial
 	RaceUnknown
 )
+
 var RaceKey = map[int]Race{
 	1: AmericanIndianOrAlaskanNative,
 	2: AsianOrPacificIslander,
@@ -117,7 +123,7 @@ func (r VoterRecord) Fields() []interface{} {
 	return []interface{}{
 		phLast, phFirst, mInitial, r.birthMonth,
 		r.birthDay, r.birthYear, r.city, r.gender, r.party,
-		r.race}//, r.telephone.areaCode, r.telephone.number}
+		r.race} //, r.telephone.areaCode, r.telephone.number}
 }
 
 func ParseRecord(data string) (*VoterRecord, error) {
@@ -126,10 +132,14 @@ func ParseRecord(data string) (*VoterRecord, error) {
 	fields := strings.Split(data, "\t")
 
 	birthdate, err := time.Parse("01/02/2006", fields[21])
-	if err != nil { return parsedRecord, err }
+	if err != nil {
+		return parsedRecord, err
+	}
 
 	race_id, err := strconv.ParseInt(fields[20], 0, 32)
-	if err != nil { race_id = 8 }
+	if err != nil {
+		race_id = 8
+	}
 
 	// gross
 	parsedRecord.lastName = fields[2]
@@ -144,7 +154,9 @@ func ParseRecord(data string) (*VoterRecord, error) {
 	parsedRecord.race = Race(int(race_id))
 
 	phone, err := parsePhone(fields[34] + fields[35])
-	if err == nil { parsedRecord.telephone = phone }
+	if err == nil {
+		parsedRecord.telephone = phone
+	}
 
 	return parsedRecord, nil
 }
@@ -221,7 +233,7 @@ loop:
 			err = fmt.Errorf("expected digit, got %q", r)
 			break loop
 		case ExpectNumber:
-			if ((r == ')') || (r == '/') || (r == '-') || (r == '.')) {
+			if (r == ')') || (r == '/') || (r == '-') || (r == '.') {
 				state = BeginNumber
 				continue
 			}

@@ -59,7 +59,7 @@ type SparseVectorComponent struct {
 	Value float64
 }
 
-func NewSparseVector(dim int, fields int) *SparseVector{
+func NewSparseVector(dim int, fields int) *SparseVector {
 	return &SparseVector{dim,
 		make([]SparseVectorComponent, fields)}
 }
@@ -111,8 +111,10 @@ func sparseDot(a *SparseVector, b *SparseVector) float64 {
 			aIndex++
 			bIndex++
 		}
-		if (aIndex > len(a.Components) - 1) ||
-			(bIndex > len(b.Components) - 1) { break }
+		if (aIndex > len(a.Components)-1) ||
+			(bIndex > len(b.Components)-1) {
+			break
+		}
 	}
 
 	return sum
@@ -155,7 +157,9 @@ func Dot(a Interface, b Interface) (float64, error) {
 
 func Cosine(a Interface, b Interface) (float64, error) {
 	dot, err := Dot(a, b)
-	if err != nil { return 0.0, err }
+	if err != nil {
+		return 0.0, err
+	}
 	return dot / (a.Norm() * b.Norm()), nil
 }
 
@@ -177,7 +181,9 @@ func Random(dimension int) Interface {
 
 func Hash(x Interface, r Interface) (bool, error) {
 	dot, err := Dot(r, x)
-	if err != nil { return false, err }
+	if err != nil {
+		return false, err
+	}
 	return dot >= 0.0, nil
 }
 
@@ -185,8 +191,12 @@ func Signature(x Interface, r ...Interface) (uint16, error) {
 	sig := uint16(0)
 	for i, ri := range r {
 		hash, err := Hash(x, ri)
-		if err != nil { return 0, err }
-		if hash { sig |= 1 << uint16(i) }
+		if err != nil {
+			return 0, err
+		}
+		if hash {
+			sig |= 1 << uint16(i)
+		}
 	}
 	return sig, nil
 }

@@ -10,14 +10,15 @@ type Candidate struct {
 }
 
 type CandidateHeap []*Candidate
-func (h CandidateHeap) Len() int { return len(h) }
+
+func (h CandidateHeap) Len() int           { return len(h) }
 func (h CandidateHeap) Less(i, j int) bool { return h[i].recordId < h[j].recordId }
-func (h CandidateHeap) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
-func (h *CandidateHeap) Push (c interface{}) {
+func (h CandidateHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h *CandidateHeap) Push(c interface{}) {
 	*h = append(*h, c.(*Candidate))
 }
 
-func (h *CandidateHeap) Pop () interface{} {
+func (h *CandidateHeap) Pop() interface{} {
 	old := *h
 	n := len(old)
 	x := old[n-1]
@@ -26,21 +27,22 @@ func (h *CandidateHeap) Pop () interface{} {
 }
 
 type WeightedCandidate struct {
-	recordId uint
+	recordId           uint
 	matchingSignatures int
 }
 
 type WeightedCandidateHeap []*WeightedCandidate
+
 func (h WeightedCandidateHeap) Len() int { return len(h) }
 func (h WeightedCandidateHeap) Less(i, j int) bool {
 	return h[i].matchingSignatures > h[j].matchingSignatures
 }
 func (h WeightedCandidateHeap) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
-func (h *WeightedCandidateHeap) Push (c interface{}) {
+func (h *WeightedCandidateHeap) Push(c interface{}) {
 	*h = append(*h, c.(*WeightedCandidate))
 }
 
-func (h *WeightedCandidateHeap) Pop () interface{} {
+func (h *WeightedCandidateHeap) Pop() interface{} {
 	old := *h
 	n := len(old)
 	x := old[n-1]
@@ -89,7 +91,6 @@ func MergeCandidateHeap(sourceHeaps ...*CandidateHeap) []WeightedCandidate {
 		} else {
 		}
 	}
-
 
 	cs := make([]WeightedCandidate, 0, len(*weightHeap))
 
