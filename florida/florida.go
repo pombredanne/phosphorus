@@ -3,7 +3,6 @@ package florida
 import (
 	"bytes"
 	"fmt"
-	// "runtime/pprof"
 	"encoding/gob"
 	"strconv"
 	"strings"
@@ -11,6 +10,8 @@ import (
 	"unicode"
 	"willstclair.com/phosphorus/metaphone3"
 )
+
+var mp metaphone3.Metaphone3
 
 type Gender int
 
@@ -68,6 +69,7 @@ type NANPNumber struct {
 }
 
 type VoterRecord struct {
+	RecordId   uint
 	lastName   string
 	firstName  string
 	middleName string
@@ -81,19 +83,11 @@ type VoterRecord struct {
 	telephone  NANPNumber
 }
 
-var mp metaphone3.Metaphone3
-
-func init() {
-	mp = metaphone3.NewMetaphone3()
-	// mp.SetKeyLength(5)
-
-	gob.RegisterName("Gender", Male)
-	gob.RegisterName("Party", Democratic)
-	gob.RegisterName("Race", AmericanIndianOrAlaskanNative)
-	// gob.RegisterName("NANPNumber", NANPNumber{[3]byte{'3','1','2'},[7]byte{'8','6','7','5','3','0','9'}})
+func (r *VoterRecord) Id() uint {
+	return r.RecordId
 }
 
-func (r VoterRecord) Fields() []interface{} {
+func (r *VoterRecord) Fields() []interface{} {
 	var phFirst string
 	buf := new(bytes.Buffer)
 
@@ -127,7 +121,7 @@ func (r VoterRecord) Fields() []interface{} {
 }
 
 func ParseRecord(data string) (*VoterRecord, error) {
-	parsedRecord := &VoterRecord{}
+	var parsedRecord *VoterRecord
 
 	fields := strings.Split(data, "\t")
 
@@ -141,17 +135,21 @@ func ParseRecord(data string) (*VoterRecord, error) {
 		race_id = 8
 	}
 
-	// gross
-	parsedRecord.lastName = fields[2]
-	parsedRecord.firstName = fields[4]
-	parsedRecord.middleName = fields[5]
-	parsedRecord.birthMonth = birthdate.Month().String()
-	parsedRecord.birthDay = birthdate.Day()
-	parsedRecord.birthYear = birthdate.Year()
-	parsedRecord.city = fields[9]
-	parsedRecord.party = PartyKey[fields[23]]
-	parsedRecord.gender = GenderKey[fields[19]]
-	parsedRecord.race = Race(int(race_id))
+	recordId, _ := strconv.ParseUint(fields[1], 10, 32)
+
+	parsedRecord = &VoterRecord{
+		RecordId: uint(recordId),
+		lastName: fields[2],
+		firstName: fields[4],
+		middleName: fields[5],
+		birthMonth: birthdate.Month().String(),
+		birthDay: birthdate.Day(),
+		birthYear: birthdate.Year(),
+		city: fields[9],
+		party: PartyKey[fields[23]],
+		gender: GenderKey[fields[19]],
+		race: Race(int(race_id)),
+	}
 
 	phone, err := parsePhone(fields[34] + fields[35])
 	if err == nil {
@@ -274,4 +272,14 @@ loop:
 
 success:
 	return parsedNumber, err
+}
+
+func init() {
+	mp = metaphone3.NewMetaphone3()
+	// mp.SetKeyLength(5)
+
+	gob.RegisterName("Gender", Male)
+	gob.RegisterName("Party", Democratic)
+	gob.RegisterName("Race", AmericanIndianOrAlaskanNative)
+	// gob.RegisterName("NANPNumber", NANPNumber{[3]byte{'3','1','2'},[7]byte{'8','6','7','5','3','0','9'}})
 }

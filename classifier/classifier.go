@@ -69,7 +69,8 @@ func (f *Field) TermWeight(term interface{}) (int, float64, error) {
 }
 
 type Record interface {
-	Fields() []interface{}
+	Id() uint
+	Fields()   []interface{}
 }
 
 type Classifier struct {

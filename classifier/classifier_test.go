@@ -53,16 +53,22 @@ type dummyRecord struct {
 	f []interface{}
 }
 
-func (r dummyRecord) Fields() []interface{} {
+func (r *dummyRecord) Fields() []interface{} {
 	return r.f
 }
 
+func (r *dummyRecord) Id() uint {
+	return uint(0)
+}
+
 func TestVectorize(t *testing.T) {
-	testRecords := []dummyRecord{
-		dummyRecord{[]interface{}{"a", 1}},
-		dummyRecord{[]interface{}{"b", 1}},
-		dummyRecord{[]interface{}{"c", 2}}}
-	c := new(Classifier)
+	var c Classifier
+
+	testRecords := []Record{
+		&dummyRecord{[]interface{}{"a", 1}},
+		&dummyRecord{[]interface{}{"b", 1}},
+		&dummyRecord{[]interface{}{"c", 2}}}
+
 	for _, r := range testRecords {
 		c.Classify(r)
 	}
