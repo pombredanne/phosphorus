@@ -1,0 +1,6 @@
+%module metaphone3
+%{
+#include "Metaphone3.h"
+%}
+
+%include "Metaphone3.h"
