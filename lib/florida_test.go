@@ -1,9 +1,10 @@
-package florida
+package lib
 
 import (
 	"encoding/json"
 	"os"
 	"testing"
+	"willstclair.com/phosphorus/metaphone3"
 )
 
 var sampleRecords []string
@@ -56,7 +57,7 @@ Works as designed?) Gross.
 */
 func TestMetaphoneStringBounds(t *testing.T) {
 	record, _ := ParseRecord(RECORD_DATA)
-	f := record.Fields()
+	f := record.Fields(metaphone3.NewMetaphone3())
 	if f[0] != "MHN" || f[1] != "MR" {
 		t.Errorf("Incorrect Metaphone encoding: %s", f)
 	}

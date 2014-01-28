@@ -77,6 +77,7 @@
 // #include "stdafx.h"
 #include "Metaphone3.h"
 #include <string.h>
+#include <stdarg.h>
 
 #define AND &&
 #define OR ||

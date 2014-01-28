@@ -1,4 +1,4 @@
-package candidate
+package lib
 
 import (
 	"container/heap"

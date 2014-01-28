@@ -1,17 +1,16 @@
-package florida
+package lib
 
 import (
+	// "log"
 	"bytes"
-	"fmt"
 	"encoding/gob"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
 	"unicode"
 	"willstclair.com/phosphorus/metaphone3"
 )
-
-var mp metaphone3.Metaphone3
 
 type Gender int
 
@@ -87,7 +86,7 @@ func (r *VoterRecord) Id() uint {
 	return r.RecordId
 }
 
-func (r *VoterRecord) Fields() []interface{} {
+func (r *VoterRecord) Fields(mp metaphone3.Metaphone3) []interface{} {
 	var phFirst string
 	buf := new(bytes.Buffer)
 
@@ -138,17 +137,17 @@ func ParseRecord(data string) (*VoterRecord, error) {
 	recordId, _ := strconv.ParseUint(fields[1], 10, 32)
 
 	parsedRecord = &VoterRecord{
-		RecordId: uint(recordId),
-		lastName: fields[2],
-		firstName: fields[4],
+		RecordId:   uint(recordId),
+		lastName:   fields[2],
+		firstName:  fields[4],
 		middleName: fields[5],
 		birthMonth: birthdate.Month().String(),
-		birthDay: birthdate.Day(),
-		birthYear: birthdate.Year(),
-		city: fields[9],
-		party: PartyKey[fields[23]],
-		gender: GenderKey[fields[19]],
-		race: Race(int(race_id)),
+		birthDay:   birthdate.Day(),
+		birthYear:  birthdate.Year(),
+		city:       fields[9],
+		party:      PartyKey[fields[23]],
+		gender:     GenderKey[fields[19]],
+		race:       Race(int(race_id)),
 	}
 
 	phone, err := parsePhone(fields[34] + fields[35])
@@ -275,7 +274,7 @@ success:
 }
 
 func init() {
-	mp = metaphone3.NewMetaphone3()
+
 	// mp.SetKeyLength(5)
 
 	gob.RegisterName("Gender", Male)

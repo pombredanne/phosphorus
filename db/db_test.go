@@ -11,21 +11,6 @@ var dynamoDBServer *exec.Cmd
 
 const DDBLOCAL = "/Users/wsc/repo/dynamodb_local_2014-01-08"
 
-var DummyRegion = aws.Region{
-	"dummy-region",
-	"https://ec2.us-east-1.amazonaws.com",
-	"https://s3.amazonaws.com",
-	"",
-	false,
-	false,
-	"https://sdb.amazonaws.com",
-	"https://sns.us-east-1.amazonaws.com",
-	"https://sqs.us-east-1.amazonaws.com",
-	"https://iam.amazonaws.com",
-	"https://elasticloadbalancing.us-east-1.amazonaws.com",
-	"http://localhost:8000",
-	aws.ServiceInfo{"https://monitoring.us-east-1.amazonaws.com", aws.V2Signature},
-	"https://autoscaling.us-east-1.amazonaws.com"}
 
 // func startDynamoDB() {
 // 	dynamoDBServer = exec.Command(
