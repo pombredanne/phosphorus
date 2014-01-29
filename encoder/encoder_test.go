@@ -1,8 +1,9 @@
 package encoder
 
 import (
+	"os"
 	"math"
-	// "log"
+	"io/ioutil"
 	"reflect"
 	"testing"
 )
@@ -73,6 +74,29 @@ func TestEncoder(t *testing.T) {
 	e := NewEncoder(&c)
 	v := e.Encode(records[0])
 
+	if math.Abs(1.0986122886681096 - v.Component(0)) > 0.00001 {
+		t.Fail()
+	}
+
+	if math.Abs(0.4054651081081644 - v.Component(3)) > 0.00001 {
+		t.Fail()
+	}
+}
+
+func TestPersistEncoder(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "phosphorus_test")
+	if err != nil { panic(err) }
+	defer func() { os.RemoveAll(tempDir) }()
+	err = os.Chdir(tempDir); if err != nil { panic(err) }
+
+	e := NewEncoder(&c)
+	e.Path = "encoder"
+	e.Save()
+
+	e2 := Encoder{Path: "encoder"}
+	e2.Load()
+
+	v := e2.Encode(records[0])
 	if math.Abs(1.0986122886681096 - v.Component(0)) > 0.00001 {
 		t.Fail()
 	}

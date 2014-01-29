@@ -1,6 +1,8 @@
 package encoder
 
 import (
+	"os"
+	"encoding/gob"
 	"math"
 	"willstclair.com/phosphorus/vector"
 )
@@ -44,6 +46,7 @@ func (c *Counter) Count(fields []interface{}) {
 }
 
 type Encoder struct {
+	Path string
 	Dimension int
 	Terms     []map[interface{}]int
 	Weights   [][]float64
@@ -78,4 +81,22 @@ func (e *Encoder) Encode (fields []interface{}) vector.Interface {
 	}
 
 	return vector.Interface(v)
+}
+
+func (e *Encoder) Save() error {
+	file, err := os.Create(e.Path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	return gob.NewEncoder(file).Encode(e)
+}
+
+func (e *Encoder) Load() error {
+	file, err := os.Open(e.Path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	return gob.NewDecoder(file).Decode(e)
 }
