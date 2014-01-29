@@ -169,11 +169,11 @@ func fakeSig() *Signature {
 	return &sig
 }
 
-func TestIndexerManualFlush(t *testing.T) {
+func TestIndexManualFlush(t *testing.T) {
 	cycleTable()
 
 	sig := fakeSig()
-	xr := NewIndexer(2, table)
+	xr := NewIndex(2, table)
 
 	xr.Add(0xbeefcafe, sig)
 	xr.Flush(0x7fbeef)
@@ -184,11 +184,11 @@ func TestIndexerManualFlush(t *testing.T) {
 	time.Sleep(1 * time.Millisecond)
 }
 
-func TestIndexerAutoFlush(t *testing.T) {
+func TestIndexAutoFlush(t *testing.T) {
 	cycleTable()
 
 	sig := fakeSig()
-	xr := NewIndexer(2, table)
+	xr := NewIndex(2, table)
 	xr.Add(0xdeadbeef, sig)
 	xr.Add(0x00c0ffee, sig)
 
@@ -208,13 +208,13 @@ func TestIndexQuery(t *testing.T) {
 	sig2 := fakeSig()
 	sig2[0] = 0
 
-	xr := NewIndexer(2, table)
+	xr := NewIndex(2, table)
 	xr.Add(0xdeadbeef, sig1)
 	xr.Add(0x00c0ffee, sig2)
 
 	xr.FlushAll()
 
-	x := NewIndex(table)
+	x := NewIndex(2, table)
 	candidates := x.Query(sig1)
 	if candidates[0].Matches != 128 {
 		t.Fail()

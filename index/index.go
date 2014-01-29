@@ -190,7 +190,7 @@ func (s *Entry) Save(t *dynamodb.Table) error {
 	return err
 }
 
-type Indexer struct {
+type Index struct {
 	entries [1<<23][]uint32
 	threshold int
 	table *dynamodb.Table
@@ -199,8 +199,8 @@ type Indexer struct {
 
 const FLUSHMAX = 3
 
-func NewIndexer(threshold int, table *dynamodb.Table) *Indexer {
-	xr := Indexer{
+func NewIndex(threshold int, table *dynamodb.Table) *Index {
+	xr := Index{
 		threshold: threshold,
 		table: table,
 		flushSem: make(chan int, FLUSHMAX),
@@ -213,7 +213,7 @@ func NewIndexer(threshold int, table *dynamodb.Table) *Indexer {
 	return &xr
 }
 
-func (xr *Indexer) Add (recordId uint32, s *Signature) {
+func (xr *Index) Add (recordId uint32, s *Signature) {
 	for si, v := range s {
 		i := int(v) | (si << 16)
 		xr.entries[i] = append(xr.entries[i], recordId)
@@ -224,7 +224,7 @@ func (xr *Indexer) Add (recordId uint32, s *Signature) {
 	}
 }
 
-func (xr *Indexer) Flush (i int) {
+func (xr *Index) Flush (i int) {
 	if len(xr.entries[i]) > 0 {
 		ids := xr.entries[i]
 		xr.entries[i] = make([]uint32, 0, xr.threshold)
@@ -243,23 +243,12 @@ func (xr *Indexer) Flush (i int) {
 	}
 }
 
-func (xr *Indexer) FlushAll() {
+func (xr *Index) FlushAll() {
 	for i, e := range xr.entries {
 		if len(e) > 0 {
 			xr.Flush(i)
 		}
 	}
-}
-
-type Index struct {
-	balls int
-	t *dynamodb.Table
-}
-
-func NewIndex(t *dynamodb.Table) *Index {
-	var x Index
-	x.t = t
-	return &x
 }
 
 type Candidate struct {
@@ -287,7 +276,7 @@ func (x *Index) Query (s *Signature) []Candidate {
 }
 
 func (x *Index) batchGet(keys []dynamodb.Key, c chan uint32) {
-	bgi := x.t.BatchGetItems(keys)
+	bgi := x.table.BatchGetItems(keys)
 	results, err := bgi.Execute()
 	// No throughput throttle handling here yet. Need to double-check goamz
 	// to see what happens to the UnprocessedKeys field in the response.
