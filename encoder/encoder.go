@@ -66,7 +66,7 @@ func NewEncoder (c *Counter) *Encoder {
 	return &e
 }
 
-func (e *Encoder) Encode (fields []interface{}) *vector.SparseVector {
+func (e *Encoder) Encode (fields []interface{}) vector.Interface {
 	v := vector.NewSparseVector(e.Dimension, len(fields))
 
 	offset := 0
@@ -77,5 +77,5 @@ func (e *Encoder) Encode (fields []interface{}) *vector.SparseVector {
 		offset += len(e.Weights[i])
 	}
 
-	return v
+	return vector.Interface(v)
 }

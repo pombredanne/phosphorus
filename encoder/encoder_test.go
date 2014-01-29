@@ -71,7 +71,7 @@ func TestCounterCounts(t *testing.T) {
 
 func TestEncoder(t *testing.T) {
 	e := NewEncoder(&c)
-	v := *e.Encode(records[0])
+	v := e.Encode(records[0])
 
 	if math.Abs(1.0986122886681096 - v.Component(0)) > 0.00001 {
 		t.Fail()
