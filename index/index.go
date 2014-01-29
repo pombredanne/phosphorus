@@ -6,18 +6,18 @@ import (
 	"encoding/binary"
 	"encoding/gob"
 	"fmt"
+	"github.com/crowdmob/goamz/aws"
+	"github.com/crowdmob/goamz/dynamodb"
 	"log"
 	"os"
 	"sort"
 	"sync"
 	"time"
-	"github.com/crowdmob/goamz/aws"
-	"github.com/crowdmob/goamz/dynamodb"
 	"willstclair.com/phosphorus/vector"
 )
 
 const (
-	THROUGHPUT_EXCEEDED = "ProvisionedThroughputExceededException"
+	THROUGHPUT_EXCEEDED  = "ProvisionedThroughputExceededException"
 	TABLE_NAME_SIGNATURE = "signature"
 )
 
@@ -70,7 +70,7 @@ func NewServer(accessKeyId string, secretAccessKey string) *dynamodb.Server {
 type Signature [128]uint16
 
 func (s *Signature) Key(i int) uint32 {
-	return uint32(s[i]) | uint32(i << 16)
+	return uint32(s[i]) | uint32(i<<16)
 }
 
 func Key64(k uint32, trim int, buf bytes.Buffer) string {
@@ -98,12 +98,12 @@ func (s *Signature) DynamoKeys() []dynamodb.Key {
 }
 
 type Template struct {
-	Directory  string
-	Dimension  int
-	family     [128][16]vector.Interface
+	Directory string
+	Dimension int
+	family    [128][16]vector.Interface
 }
 
-func (t *Template) Sign (v vector.Interface) *Signature {
+func (t *Template) Sign(v vector.Interface) *Signature {
 	var s Signature
 
 	for i, h := range t.family {
@@ -113,7 +113,7 @@ func (t *Template) Sign (v vector.Interface) *Signature {
 	return &s
 }
 
-func (t *Template) Load () {
+func (t *Template) Load() {
 	var wait sync.WaitGroup
 	for i, _ := range t.family {
 		i := i
@@ -141,7 +141,7 @@ func (t *Template) Load () {
 	wait.Wait()
 }
 
-func (t *Template) Generate () {
+func (t *Template) Generate() {
 	var wait sync.WaitGroup
 	for i, _ := range t.family {
 		filename := fmt.Sprintf("hash_%02x", i)
@@ -165,10 +165,9 @@ func (t *Template) Generate () {
 	wait.Wait()
 }
 
-
 type Entry struct {
-	Key        uint32
-	RecordIds  []uint32
+	Key       uint32
+	RecordIds []uint32
 }
 
 func (e *Entry) RecordsBase64() []string {
@@ -191,10 +190,10 @@ func (s *Entry) Save(t *dynamodb.Table) error {
 }
 
 type Index struct {
-	entries [1<<23][]uint32
+	entries   [1 << 23][]uint32
 	threshold int
-	table *dynamodb.Table
-	flushSem chan int
+	table     *dynamodb.Table
+	flushSem  chan int
 }
 
 const FLUSHMAX = 3
@@ -202,10 +201,12 @@ const FLUSHMAX = 3
 func NewIndex(threshold int, table *dynamodb.Table) *Index {
 	xr := Index{
 		threshold: threshold,
-		table: table,
-		flushSem: make(chan int, FLUSHMAX),
+		table:     table,
+		flushSem:  make(chan int, FLUSHMAX),
 	}
-	for i := 0; i < FLUSHMAX; i++ { xr.flushSem <- 1 }
+	for i := 0; i < FLUSHMAX; i++ {
+		xr.flushSem <- 1
+	}
 
 	for i := 0; i < 1<<23; i++ {
 		xr.entries[i] = make([]uint32, 0, threshold)
@@ -213,7 +214,7 @@ func NewIndex(threshold int, table *dynamodb.Table) *Index {
 	return &xr
 }
 
-func (xr *Index) Add (recordId uint32, s *Signature) {
+func (xr *Index) Add(recordId uint32, s *Signature) {
 	for si, v := range s {
 		i := int(v) | (si << 16)
 		xr.entries[i] = append(xr.entries[i], recordId)
@@ -224,12 +225,12 @@ func (xr *Index) Add (recordId uint32, s *Signature) {
 	}
 }
 
-func (xr *Index) Flush (i int) {
+func (xr *Index) Flush(i int) {
 	if len(xr.entries[i]) > 0 {
 		ids := xr.entries[i]
 		xr.entries[i] = make([]uint32, 0, xr.threshold)
 
-		e := Entry{uint32(i),ids}
+		e := Entry{uint32(i), ids}
 		for err := e.Save(xr.table); err != nil; { // should limit retries and back off
 			err := err.(*dynamodb.Error)
 			if err.Code == THROUGHPUT_EXCEEDED {
@@ -256,7 +257,7 @@ type Candidate struct {
 	Matches  int
 }
 
-func (x *Index) Query (s *Signature) []Candidate {
+func (x *Index) Query(s *Signature) []Candidate {
 	var wait sync.WaitGroup
 	c := make(chan uint32)
 	out := make(chan []Candidate)
@@ -301,9 +302,9 @@ func (x *Index) batchGet(keys []dynamodb.Key, c chan uint32) {
 
 type ByMatches []Candidate
 
-func (c ByMatches) Len() int { return len(c) }
+func (c ByMatches) Len() int           { return len(c) }
 func (c ByMatches) Less(i, j int) bool { return c[i].Matches < c[j].Matches }
-func (c ByMatches) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
+func (c ByMatches) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
 
 func (x *Index) rankCandidates(c chan uint32, out chan []Candidate) {
 	counter := make(map[uint32]int)

@@ -1,9 +1,9 @@
 package encoder
 
 import (
-	"os"
-	"math"
 	"io/ioutil"
+	"math"
+	"os"
 	"reflect"
 	"testing"
 )
@@ -62,10 +62,10 @@ func TestCounterTerms(t *testing.T) {
 }
 
 func TestCounterCounts(t *testing.T) {
-	if !reflect.DeepEqual(c.Fields[0].Counts, []int{1,1,1}) {
+	if !reflect.DeepEqual(c.Fields[0].Counts, []int{1, 1, 1}) {
 		t.Fail()
 	}
-	if !reflect.DeepEqual(c.Fields[1].Counts, []int{2,1}) {
+	if !reflect.DeepEqual(c.Fields[1].Counts, []int{2, 1}) {
 		t.Fail()
 	}
 }
@@ -74,20 +74,25 @@ func TestEncoder(t *testing.T) {
 	e := NewEncoder(&c)
 	v := e.Encode(records[0])
 
-	if math.Abs(1.0986122886681096 - v.Component(0)) > 0.00001 {
+	if math.Abs(1.0986122886681096-v.Component(0)) > 0.00001 {
 		t.Fail()
 	}
 
-	if math.Abs(0.4054651081081644 - v.Component(3)) > 0.00001 {
+	if math.Abs(0.4054651081081644-v.Component(3)) > 0.00001 {
 		t.Fail()
 	}
 }
 
 func TestPersistEncoder(t *testing.T) {
 	tempDir, err := ioutil.TempDir("", "phosphorus_test")
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 	defer func() { os.RemoveAll(tempDir) }()
-	err = os.Chdir(tempDir); if err != nil { panic(err) }
+	err = os.Chdir(tempDir)
+	if err != nil {
+		panic(err)
+	}
 
 	e := NewEncoder(&c)
 	e.Path = "encoder"
@@ -97,11 +102,11 @@ func TestPersistEncoder(t *testing.T) {
 	e2.Load()
 
 	v := e2.Encode(records[0])
-	if math.Abs(1.0986122886681096 - v.Component(0)) > 0.00001 {
+	if math.Abs(1.0986122886681096-v.Component(0)) > 0.00001 {
 		t.Fail()
 	}
 
-	if math.Abs(0.4054651081081644 - v.Component(3)) > 0.00001 {
+	if math.Abs(0.4054651081081644-v.Component(3)) > 0.00001 {
 		t.Fail()
 	}
 }

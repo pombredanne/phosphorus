@@ -171,7 +171,6 @@ func Cosine(a Interface, b Interface) (float64, error) {
 	return dot / (a.Norm() * b.Norm()), nil
 }
 
-
 func Random(dimension int) Interface {
 	v := make(HashVector, dimension)
 	for i := 0; i < dimension; i++ {

@@ -1,19 +1,19 @@
 package main
 
 import (
-	log_ "log"
-	"fmt"
 	"encoding/json"
+	"fmt"
+	log_ "log"
 	"os"
 	"runtime"
 )
 
 const (
-	WORKING_DIR = "/var/lib/phosphorus"
+	WORKING_DIR     = "/var/lib/phosphorus"
 	WORKING_DIR_ENV = "PHOSPHORUS_DIR"
-	CONFIG_FILE = "config.json"
-	LOG_FLAGS = log_.Ldate | log_.Ltime | log_.Lshortfile
-	BANNER = `
+	CONFIG_FILE     = "config.json"
+	LOG_FLAGS       = log_.Ldate | log_.Ltime | log_.Lshortfile
+	BANNER          = `
                            )
                           ) \
         . . . . . . . . ./ ) (. . .
@@ -28,14 +28,14 @@ const (
 
 var (
 	working string
-	log log_.Logger
-	config Configuration
+	log     log_.Logger
+	config  Configuration
 )
 
 type Configuration struct {
-	MaxProcs            int
-	AWSSecretAccessKey  string
-	AWSAccessKeyId      string
+	MaxProcs           int
+	AWSSecretAccessKey string
+	AWSAccessKeyId     string
 }
 
 func init() {
@@ -55,13 +55,19 @@ func init() {
 		log.Fatalln(err)
 	}
 
-	if err = os.Chdir(working); err != nil { log.Fatalln(err) }
+	if err = os.Chdir(working); err != nil {
+		log.Fatalln(err)
+	}
 
 	file, err := os.Open(CONFIG_FILE)
-	if err != nil { log.Fatalln(err) }
+	if err != nil {
+		log.Fatalln(err)
+	}
 	defer file.Close()
 
-	if json.NewDecoder(file).Decode(&config) != nil { log.Fatalln(err) }
+	if json.NewDecoder(file).Decode(&config) != nil {
+		log.Fatalln(err)
+	}
 
 	runtime.GOMAXPROCS(config.MaxProcs)
 }

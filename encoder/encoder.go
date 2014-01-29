@@ -1,9 +1,9 @@
 package encoder
 
 import (
-	"os"
 	"encoding/gob"
 	"math"
+	"os"
 	"willstclair.com/phosphorus/vector"
 )
 
@@ -46,13 +46,13 @@ func (c *Counter) Count(fields []interface{}) {
 }
 
 type Encoder struct {
-	Path string
+	Path      string
 	Dimension int
 	Terms     []map[interface{}]int
 	Weights   [][]float64
 }
 
-func NewEncoder (c *Counter) *Encoder {
+func NewEncoder(c *Counter) *Encoder {
 	var e Encoder
 	e.Weights = make([][]float64, len(c.Fields))
 	e.Terms = make([]map[interface{}]int, len(c.Fields))
@@ -69,7 +69,7 @@ func NewEncoder (c *Counter) *Encoder {
 	return &e
 }
 
-func (e *Encoder) Encode (fields []interface{}) vector.Interface {
+func (e *Encoder) Encode(fields []interface{}) vector.Interface {
 	v := vector.NewSparseVector(e.Dimension, len(fields))
 
 	offset := 0

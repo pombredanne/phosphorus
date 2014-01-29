@@ -1,13 +1,13 @@
 package index
 
 import (
-	"fmt"
-	"io/ioutil"
 	"encoding/gob"
+	"fmt"
+	"github.com/crowdmob/goamz/dynamodb"
+	"io/ioutil"
 	"os"
 	"testing"
 	"time"
-	"github.com/crowdmob/goamz/dynamodb"
 	"willstclair.com/phosphorus/vector"
 )
 
@@ -44,18 +44,29 @@ func TestSignatureKeys(t *testing.T) {
 
 func generateZeroTemplate() string {
 	tempDir, err := ioutil.TempDir("", "phosphorus_test")
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 
-	err = os.Chdir(tempDir); if err != nil { panic(err) }
+	err = os.Chdir(tempDir)
+	if err != nil {
+		panic(err)
+	}
 
 	for i := 0; i < 128; i++ {
 		filename := fmt.Sprintf("hash_%02x", i)
-		file, err := os.Create(filename); if err != nil { panic(err) }
+		file, err := os.Create(filename)
+		if err != nil {
+			panic(err)
+		}
 		defer file.Close()
 		enc := gob.NewEncoder(file)
 		for j := 0; j < 16; j++ {
 			v := make(vector.HashVector, 4)
-			err = enc.Encode(v); if err != nil { panic(err) }
+			err = enc.Encode(v)
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 	return tempDir
@@ -87,9 +98,14 @@ func TestTemplateLoad(t *testing.T) {
 // mostly just a sanity check
 func TestTemplateGenerate(t *testing.T) {
 	tempDir, err := ioutil.TempDir("", "phosphorus_test")
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 	defer func() { os.RemoveAll(tempDir) }()
-	err = os.Chdir(tempDir); if err != nil { panic(err) }
+	err = os.Chdir(tempDir)
+	if err != nil {
+		panic(err)
+	}
 
 	template := Template{
 		Directory: tempDir,
@@ -121,17 +137,21 @@ func TestTemplateSign(t *testing.T) {
 	}
 	template.Load()
 
-	v0 := vector.Vector{-1.0,-1.0,1.0,-1.0}
-	v1 := vector.Vector{2.0,-1.0,2.0,-1.0}
+	v0 := vector.Vector{-1.0, -1.0, 1.0, -1.0}
+	v1 := vector.Vector{2.0, -1.0, 2.0, -1.0}
 
 	s := template.Sign(v0)
 	for _, i := range s {
-		if i != 65535 { t.Fail() }
+		if i != 65535 {
+			t.Fail()
+		}
 	}
 
 	s = template.Sign(v1)
 	for _, i := range s {
-		if i != 0 { t.Fail() }
+		if i != 0 {
+			t.Fail()
+		}
 	}
 
 	template.Generate()
@@ -150,9 +170,11 @@ func TestTemplateSign(t *testing.T) {
 func TestSaveEntry(t *testing.T) {
 	cycleTable()
 
-	e := Entry{0x7fbeef,[]uint32{0x00c0ffee}}
+	e := Entry{0x7fbeef, []uint32{0x00c0ffee}}
 	err := e.Save(table)
-	if err != nil { t.Error(err) }
+	if err != nil {
+		t.Error(err)
+	}
 
 	response, _ := table.GetItem(&dynamodb.Key{HashKey: "f77v"})
 	if response["i"].SetValues[0] != "AMD/7g==" {
@@ -162,7 +184,7 @@ func TestSaveEntry(t *testing.T) {
 
 func fakeSig() *Signature {
 	var sig Signature
-	for i := 0; i < 128; i+=2 {
+	for i := 0; i < 128; i += 2 {
 		sig[i] = 0xcafe
 		sig[i+1] = 0xbeef
 	}
