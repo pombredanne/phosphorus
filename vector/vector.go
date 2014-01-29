@@ -1,10 +1,18 @@
-package lib
+package vector
 
 import (
 	"fmt"
 	"math"
 	"math/rand"
 )
+
+func Compact(x float64) uint16 {
+	return uint16(math.Floor((x + 8.0) * 4096.0))
+}
+
+func Uncompact(x uint16) float64 {
+	return (float64(x) / 4096.0) - 8.0
+}
 
 type Interface interface {
 	Dimension() int
@@ -180,29 +188,16 @@ func Hash(x Interface, r Interface) (bool, error) {
 	return dot >= 0.0, nil
 }
 
-func Signature(x Interface, r []HashVector) (uint16, error) {
-	sig := uint16(0)
+func Signature(x Interface, r []Interface) uint16 {
+	var sig uint16
 	for i, ri := range r {
 		hash, err := Hash(x, ri)
 		if err != nil {
-			return 0, err
+			panic(err)
 		}
 		if hash {
 			sig |= 1 << uint16(i)
 		}
 	}
-	return sig, nil
-}
-
-func SignatureSet(r Interface, hf [][]HashVector) ([]uint16, error) {
-	var signatures = make([]uint16, len(hf))
-	var err error
-
-	for i, h := range hf {
-		signatures[i], err = Signature(r, h)
-		if err != nil {
-			return signatures, err
-		}
-	}
-	return signatures, nil
+	return sig
 }

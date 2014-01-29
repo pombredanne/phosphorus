@@ -1,4 +1,4 @@
-package lib
+package vector
 
 import (
 	"math"
@@ -54,29 +54,8 @@ func TestSignature(t *testing.T) {
 		&Vector{-1.0, 0.0, 1.0, 0.0, 0.0}, // -0.2 + 0.4 = 0.2
 		&Vector{0.0, -1.0, 0.0, 0.0, 1.0}} // -0.3 + 0.6 = 0.6
 
-	sig, _ := Signature(tv, hv)
+	sig := Signature(tv, hv)
 	if sig != 0xc {
 		t.Errorf("Incorrect hash signature")
-	}
-}
-
-var hf = [][]Interface{
-	[]Interface{
-		&Vector{1.0, -1.0, 0.0, 0.0, 0.0},  // 0.2 + -0.3 = -0.1
-		&Vector{0.0, 1.0, 0.0, -1.0, 0.0},  // 0.3 + -0.4 = -0.1
-		&Vector{-1.0, 0.0, 1.0, 0.0, 0.0},  // -0.2 + 0.4 = 0.2
-		&Vector{0.0, -1.0, 0.0, 0.0, 1.0}}, // -0.3 + 0.6 = 0.6
-	[]Interface{
-		&Vector{1.0, -1.0, 0.0, 0.0, 0.0},  // 0.2 + -0.3 = -0.1
-		&Vector{-1.0, 0.0, 1.0, 0.0, 0.0},  // -0.2 + 0.4 = 0.2
-		&Vector{0.0, 1.0, 0.0, -1.0, 0.0},  // 0.3 + -0.4 = -0.1
-		&Vector{0.0, -1.0, 0.0, 0.0, 1.0}}} // -0.3 + 0.6 = 0.6
-
-func TestSignatureSet(t *testing.T) {
-	tv := Vector{0.2, 0.3, 0.4, 0.5, 0.6}
-
-	sigset, _ := SignatureSet(tv, hf)
-	if sigset[0] != 0xc || sigset[1] != 0xa {
-		t.Errorf("%s", "Incorrect signature set")
 	}
 }
