@@ -1,13 +1,14 @@
 package main
 
 import (
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"io"
 	log_ "log"
 	"os"
 	"runtime"
+	"willstclair.com/phosphorus/data"
+	"willstclair.com/phosphorus/encoder"
+	"willstclair.com/phosphorus/index"
 )
 
 const (
@@ -37,9 +38,9 @@ var (
 )
 
 type Configuration struct {
-	MaxProcs           int
-	AWSSecretAccessKey string
-	AWSAccessKeyId     string
+	MaxProcs        int
+	AccessKeyId     string
+	SecretAccessKey string
 }
 
 func init() {
@@ -77,24 +78,118 @@ func init() {
 }
 
 func prepare() {
-	var lines [][]string
+	d := data.NewData("./data", 4)
+	var c encoder.Counter
 
-	file, err := os.Open("/Users/wsc/unindexed/VoterExtract/DAD_20130903.txt")
+	err := d.Slurp(func(records chan *data.Record) {
+		for r := range records {
+			c.Count(r.Fields)
+		}
+	})
+
 	if err != nil {
 		panic(err)
 	}
-	defer file.Close()
 
-	r := csv.NewReader(file)
+	os.Chdir(working)
 
-	for line, err := r.Read(); err != io.EOF; line, err = r.Read() {
-		if err != nil {
-			log.Println(err)
-		}
-		lines = append(lines, line)
+	e := encoder.NewEncoder(&c)
+	e.Path = "./encoder"
+	err = e.Save()
+	if err != nil {
+		panic(err)
 	}
 
-	log.Println("goodbye?")
+	log.Printf("Encoding complete; dimension: %d\n", e.Dimension)
+
+	log.Println("Generating hash template.")
+	t := index.Template{
+		Directory: "./hash",
+		Dimension: e.Dimension,
+	}
+	t.Generate()
+
+	log.Println("uh welp")
+}
+
+func info() {
+	var e encoder.Encoder
+	e.Path = "./encoder"
+	err := e.Load()
+	if err == nil {
+		log.Printf("Encoder found; dimension: %d\n", e.Dimension)
+	} else {
+		log.Println("Encoder not found.")
+		return
+	}
+
+	t := index.Template{
+		Directory: "./hash",
+		Dimension: e.Dimension}
+	t.Load()
+	log.Printf("Uh, template found?")
+}
+
+func createTable() {
+	server := index.NewRealServer(config.AccessKeyId, config.SecretAccessKey)
+	_, err := server.CreateTable(index.SignatureTableDescription)
+	if err != nil {
+		panic(err)
+	}
+}
+
+type RecordSig struct {
+	Id        uint32
+	Signature *index.Signature
+}
+
+func runindex() {
+	var e encoder.Encoder
+	e.Path = "./encoder"
+	err := e.Load()
+	if err != nil {
+		panic(err)
+	}
+
+	t := index.Template{
+		Directory: "./hash",
+		Dimension: e.Dimension}
+	t.Load()
+
+	server := index.NewRealServer(config.AccessKeyId, config.SecretAccessKey)
+	pk, _ := index.SignatureTableDescription.BuildPrimaryKey()
+	table := server.NewTable("signature", pk)
+
+	xr := index.NewIndex(5, table)
+
+	d := data.NewData("./data", 4)
+
+	records2 := make(chan *RecordSig)
+	done := make(chan int)
+	go func() {
+		for r := range records2 {
+			xr.Add(r.Id, r.Signature)
+		}
+		done <- 1
+	}()
+
+	err = d.Slurp(func(records chan *data.Record) {
+		for r := range records {
+			v := e.Encode(r.Fields)
+			signature := t.Sign(v)
+			records2 <- &RecordSig{r.RecordId, signature}
+		}
+
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	close(records2)
+
+	<-done
+	xr.FlushAll()
+
 }
 
 func main() {
@@ -107,6 +202,12 @@ func main() {
 	switch action {
 	case "prepare":
 		prepare()
+	case "info":
+		info()
+	case "createtable":
+		createTable()
+	case "index":
+		runindex()
 	case "version":
 		fmt.Println(VERSION)
 	default:

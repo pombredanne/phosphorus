@@ -67,6 +67,19 @@ func NewServer(accessKeyId string, secretAccessKey string) *dynamodb.Server {
 	return &dynamodb.Server{token, LocalRegion}
 }
 
+func NewRealServer(accessKeyId string, secretAccessKey string) *dynamodb.Server {
+	now := time.Now()
+	expires := now.Add(time.Duration(60) * time.Minute)
+
+	token, err := aws.GetAuth(accessKeyId, secretAccessKey, "", expires)
+	if err != nil {
+		panic(err)
+	}
+
+	return &dynamodb.Server{token, aws.USEast}
+	// return &dynamodb.Server{token, LocalRegion}
+}
+
 type Signature [128]uint16
 
 func (s *Signature) Key(i int) uint32 {
