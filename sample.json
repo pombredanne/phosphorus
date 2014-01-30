@@ -2,32 +2,42 @@
     "MaxProcs": 3,
     "AccessKeyId": "akia",
     "SecretAccessKey": "dfghj",
-    "Data": {
+    "Source": {
 	"S3": {
 	    "Bucket": "phosphorus",
 	    "Prefix": "deadb33f-data/"
 	},
 	"Table": {
 	    "Name": "florida-20140130",
-	    "Production": {
-		"ReadCapacityUnits": 10,
-		"WriteCapacityUnits": 10
-	    },
-	    "Load": {
-		"ReadCapacityUnits": 10,
-		"WriteCapacityUnits": 10
-	    }
+	    "ReadCapacityUnits": 10,
+	    "WriteCapacityUnits": 10
 	},
-	"Fields": [
+	"IdColumn": 1,
+	"SourceFields": [
 	    {
+		"Name": "last_name",
 		"Column": 2,
+		"ShortName": "ln"
+	    },
+	    {
 		"Name": "first_name",
-		"ShortName": "fn",
-		"Transform": [
-		    { "regex": "s/old/new/g" },
-		    { "exec": "" },
-		    { "builtin": "metaphone3" }
-		],
+		"Column": 3,
+		"ShortName": "fn"
+	    },
+	    {
+		"Name": "birth_year",
+		"Column": 4,
+		"ShortName": "by"
+	    },
+	    {
+		"Name": "birth_month",
+		"Column": 5,
+		"ShortName": "bm"
+	    },
+	    {
+		"Name": "birth_day",
+		"Column": 6,
+		"ShortName": "bd"
 	    }
 	],
 	"Delimiter": "\t"
@@ -39,23 +49,21 @@
 	},
 	"Table": {
 	    "Name": "phosphorus-20140130",
-	    "Normal": {
-		"ReadCapacityUnits": 10,
-		"WriteCapacityUnits": 10
-	    },
-	    "Load": {
-		"ReadCapacityUnits": 100,
-		"WriteCapacityUnits": 100
-	    }
+	    "ReadCapacityUnits": 10,
+	    "WriteCapacityUnits": 10
 	},
-	"Fields": [
+	"IndexFields": [
 	    {
-		"ShortName": "fn",
-		"Transform": [
-		    { "regex": "s/old/new/g" },
-		    { "exec": "" },
-		    { "builtin": "metaphone3" }
-		]
+		"SourceFields": ["last_name"]
+	    },
+	    {
+		"SourceFields": ["first_name"]
+	    },
+	    {
+		"SourceFields": ["birth_year"]
+	    },
+	    {
+		"SourceFields": ["birth_month", "birth_day"]
 	    }
 	]
     }
