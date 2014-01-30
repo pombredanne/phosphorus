@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	log_ "log"
 	"os"
 	"runtime"
@@ -13,6 +15,8 @@ const (
 	WORKING_DIR_ENV = "PHOSPHORUS_DIR"
 	CONFIG_FILE     = "config.json"
 	LOG_FLAGS       = log_.Ldate | log_.Ltime | log_.Lshortfile
+	VERSION         = "1.0.0-dev+deadbeef"
+	USAGE           = "usage: phosphorus ( prepare | version )"
 	BANNER          = `
                            )
                           ) \
@@ -72,14 +76,41 @@ func init() {
 	runtime.GOMAXPROCS(config.MaxProcs)
 }
 
+func prepare() {
+	var lines [][]string
+
+	file, err := os.Open("/Users/wsc/unindexed/VoterExtract/DAD_20130903.txt")
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	r := csv.NewReader(file)
+
+	for line, err := r.Read(); err != io.EOF; line, err = r.Read() {
+		if err != nil {
+			log.Println(err)
+		}
+		lines = append(lines, line)
+	}
+
+	log.Println("goodbye?")
+}
+
 func main() {
 	fmt.Println(BANNER)
 
+	if len(os.Args) < 2 {
+		log.Fatalln(USAGE)
+	}
 	action := os.Args[1]
 	switch action {
-	case "sure":
-		log.Println("ok")
+	case "prepare":
+		prepare()
+	case "version":
+		fmt.Println(VERSION)
 	default:
-		log.Printf("Unrecognized action %q", action)
+		fmt.Printf("Unrecognized action %q", action)
+		log.Fatalln(USAGE)
 	}
 }
