@@ -1,0 +1,62 @@
+{
+    "MaxProcs": 3,
+    "AccessKeyId": "akia",
+    "SecretAccessKey": "dfghj",
+    "Data": {
+	"S3": {
+	    "Bucket": "phosphorus",
+	    "Prefix": "deadb33f-data/"
+	},
+	"Table": {
+	    "Name": "florida-20140130",
+	    "Production": {
+		"ReadCapacityUnits": 10,
+		"WriteCapacityUnits": 10
+	    },
+	    "Load": {
+		"ReadCapacityUnits": 10,
+		"WriteCapacityUnits": 10
+	    }
+	},
+	"Fields": [
+	    {
+		"Column": 2,
+		"Name": "first_name",
+		"ShortName": "fn",
+		"Transform": [
+		    { "regex": "s/old/new/g" },
+		    { "exec": "" },
+		    { "builtin": "metaphone3" }
+		],
+	    }
+	],
+	"Delimiter": "\t"
+    },
+    "Index": {
+	"S3": {
+	    "Bucket": "phosphorus",
+	    "Prefix": "deadb33f-index/"
+	},
+	"Table": {
+	    "Name": "phosphorus-20140130",
+	    "Normal": {
+		"ReadCapacityUnits": 10,
+		"WriteCapacityUnits": 10
+	    },
+	    "Load": {
+		"ReadCapacityUnits": 100,
+		"WriteCapacityUnits": 100
+	    }
+	},
+	"Fields": [
+	    {
+		"ShortName": "fn",
+		"Transform": [
+		    { "regex": "s/old/new/g" },
+		    { "exec": "" },
+		    { "builtin": "metaphone3" }
+		]
+	    }
+	]
+    }
+}

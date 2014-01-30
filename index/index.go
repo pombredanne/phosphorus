@@ -244,20 +244,28 @@ func (xr *Index) Flush(i int) {
 		xr.entries[i] = make([]uint32, 0, xr.threshold)
 
 		e := Entry{uint32(i), ids}
+
+		err_count := 0
 		for err := e.Save(xr.table); err != nil; { // should limit retries and back off
+			// need a type switch here
 			err := err.(*dynamodb.Error)
 			if err.Code == THROUGHPUT_EXCEEDED {
 				log.Println("dynamo: retrying write...")
+				err_count++
+				if err_count > 5 { panic(err) }
 				time.Sleep(500 * time.Millisecond)
 			} else {
 				// log.Fatalf("flush error: %s", err)
 				panic(err)
 			}
 		}
+		// log.Printf("Flush %06x\n", i)
+		// log.Printf("Flush %06x OK: %s\n", i, e)
 	}
 }
 
 func (xr *Index) FlushAll() {
+	log.Println("Flushing all writes")
 	for i, e := range xr.entries {
 		if len(e) > 0 {
 			xr.Flush(i)

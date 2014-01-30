@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	// "path"
 	"path/filepath"
 	"strconv"
 	"sync"
@@ -96,4 +97,62 @@ func (d *Data) Slurp(fn Slurper) error {
 	close(records)
 
 	return nil
+}
+
+
+
+// func (d *Data) Map(fn Mapper, out chan interface{}) error {
+// 	var wait sync.WaitGroup
+
+// 	filenames, err := filepath.Glob(path.Join(d.working), "*")
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	for _, filename := range files {
+// 		<-d.sem
+// 		wait.Add(1)
+// 		filename := filename
+
+// 	}
+// }
+
+type Mapper func(interface{}) (interface{}, error)
+
+type File struct {
+	Path string
+	Mappers []Mapper
+	Stream chan interface{}
+	handle *os.File
+}
+
+func (f *File) Load() (err error) {
+	f.handle, err = os.Open(f.Path)
+	if err != nil {
+		return
+	}
+	defer f.handle.Close()
+
+	r := csv.NewReader(f.handle)
+
+outer:
+	for line, err := r.Read(); err != io.EOF; line, err = r.Read() {
+		if err != nil {
+			// todo: error channel
+			log.Println(err)
+			continue
+		}
+
+		var record interface{}
+		record = line
+		for _, fn := range f.Mappers {
+			record, err = fn(record)
+			if err != nil {
+				log.Println(err)
+				continue outer
+			}
+		}
+		f.Stream <- record
+	}
+	return
 }

@@ -2,10 +2,8 @@ package data
 
 import (
 	"io/ioutil"
-	"log"
 	"os"
 	"testing"
-	"willstclair.com/phosphorus/encoder"
 )
 
 const (
@@ -43,27 +41,63 @@ func init() {
 	csv.Close()
 }
 
-func TestSlurp(t *testing.T) {
-	d := NewData(tempDir, 2)
+// func TestSlurp(t *testing.T) {
+// 	d := NewData(tempDir, 2)
 
-	var c encoder.Counter
+// 	var c encoder.Counter
 
-	err := d.Slurp(func(records chan *Record) {
-		for r := range records {
-			c.Count(r.Fields)
+// 	err := d.Slurp(func(records chan *Record) {
+// 		for r := range records {
+// 			c.Count(r.Fields)
+// 		}
+// 	})
+
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+
+// 	if c.Fields[0].Counts[c.Fields[0].Terms["ORANGE"]] != 2 {
+// 		log.Println(c.Fields[0])
+// 		t.Fail()
+// 	}
+
+// 	if c.Fields[1].Counts[c.Fields[1].Terms["3"]] != 3 {
+// 		t.Fail()
+// 	}
+// }
+
+func pie(in interface{}) (out interface{}, err error) {
+	record := in.([]string)
+	out = record[1] + " PIE"
+	return
+}
+
+func TestFile(t *testing.T) {
+	ch := make(chan interface{})
+
+	f := File{
+		Path: "csv",
+		Mappers: []Mapper{pie},
+		Stream: ch,
+	}
+
+	go func() {
+		err := f.Load()
+		if err != nil { t.Error(err) }
+	}()
+
+	expected := []string{"APPLE PIE", "APPLE PIE", " PIE", "ORANGE PIE"}
+
+	count := 0
+	for _, exp := range expected {
+		actual := <-ch
+		if actual.(string) != exp {
+			t.FailNow()
 		}
-	})
-
-	if err != nil {
-		t.Error(err)
+		count++
 	}
 
-	if c.Fields[0].Counts[c.Fields[0].Terms["ORANGE"]] != 2 {
-		log.Println(c.Fields[0])
-		t.Fail()
-	}
-
-	if c.Fields[1].Counts[c.Fields[1].Terms["3"]] != 3 {
+	if count < len(expected) {
 		t.Fail()
 	}
 }

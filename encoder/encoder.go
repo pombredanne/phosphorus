@@ -21,6 +21,9 @@ func NewField() *Field {
 }
 
 func (f *Field) Add(term string) {
+	if term == "" {
+		return
+	}
 	termId, seen := f.Terms[term]
 	if !seen {
 		f.Counts = append(f.Counts, 1)
@@ -74,10 +77,14 @@ func (e *Encoder) Encode(fields []string) vector.Interface {
 
 	offset := 0
 	for i, field := range fields {
+		fo := offset
+		offset += len(e.Weights[i])
+		if field == "" {
+			continue
+		}
 		termId := e.Terms[i][field]
 		weight := e.Weights[i][termId]
-		v.Components[i] = vector.SparseVectorComponent{offset + termId, weight}
-		offset += len(e.Weights[i])
+		v.Components[i] = vector.SparseVectorComponent{fo + termId, weight}
 	}
 
 	return vector.Interface(v)

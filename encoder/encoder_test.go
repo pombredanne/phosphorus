@@ -9,9 +9,9 @@ import (
 )
 
 var records = [][]string{
-	[]string{"a", "1"},
-	[]string{"b", "1"},
-	[]string{"c", "2"}}
+	[]string{"a", "1", ""},
+	[]string{"b", "1", ""},
+	[]string{"c", "2", "x"}}
 
 var f *Field
 var c Counter
@@ -108,5 +108,15 @@ func TestPersistEncoder(t *testing.T) {
 
 	if math.Abs(0.4054651081081644-v.Component(3)) > 0.00001 {
 		t.Fail()
+	}
+}
+
+func TestDoNotCountEmptyFields(t *testing.T) {
+	e := NewEncoder(&c)
+	for _, termMap := range e.Terms {
+		_, exists := termMap[""]
+		if exists {
+			t.Fail()
+		}
 	}
 }

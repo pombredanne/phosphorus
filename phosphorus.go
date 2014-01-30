@@ -4,8 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	log_ "log"
+	"path"
+	"path/filepath"
+	"sync"
+	"strconv"
 	"os"
 	"runtime"
+	"strings"
+	"bufio"
 	"willstclair.com/phosphorus/data"
 	"willstclair.com/phosphorus/encoder"
 	"willstclair.com/phosphorus/index"
@@ -131,7 +137,7 @@ func info() {
 }
 
 func createTable() {
-	server := index.NewRealServer(config.AccessKeyId, config.SecretAccessKey)
+	server := index.NewServer(config.AccessKeyId, config.SecretAccessKey)
 	_, err := server.CreateTable(index.SignatureTableDescription)
 	if err != nil {
 		panic(err)
@@ -156,11 +162,11 @@ func runindex() {
 		Dimension: e.Dimension}
 	t.Load()
 
-	server := index.NewRealServer(config.AccessKeyId, config.SecretAccessKey)
+	server := index.NewServer(config.AccessKeyId, config.SecretAccessKey)
 	pk, _ := index.SignatureTableDescription.BuildPrimaryKey()
 	table := server.NewTable("signature", pk)
 
-	xr := index.NewIndex(5, table)
+	xr := index.NewIndex(100, table)
 
 	d := data.NewData("./data", 4)
 
@@ -192,6 +198,133 @@ func runindex() {
 
 }
 
+var (
+	e *encoder.Encoder
+	t *index.Template
+)
+
+func recordize(in interface{}) (out interface{}, err error) {
+	line := in.([]string)
+	rId, err := strconv.ParseUint(line[0], 10, 32)
+	if err != nil { return }
+	out = &data.Record{uint32(rId), line[1:]}
+	return
+}
+
+func encode(in interface{}) (out interface{}, err error) {
+	r := in.(*data.Record)
+	v := e.Encode(r.Fields)
+	signature := t.Sign(v)
+	out = &RecordSig{r.RecordId, signature}
+	return
+}
+
+func index2() {
+	e = &encoder.Encoder{
+		Path: "./encoder"}
+	err := e.Load()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	t = &index.Template{
+		Directory: "./hash",
+		Dimension: e.Dimension}
+	t.Load()
+
+	server := index.NewServer(config.AccessKeyId, config.SecretAccessKey)
+	pk, _ := index.SignatureTableDescription.BuildPrimaryKey()
+	table := server.NewTable("signature", pk)
+
+	xr := index.NewIndex(100, table)
+
+	records := make(chan interface{})
+	done := make(chan int)
+
+	// crapIndex :=
+
+	go func() {
+		for _ = range records {
+			// r := r.(*RecordSig)
+			// xr.Add(r.Id, r.Signature)
+		}
+		done <- 1
+	}()
+
+	filenames, err := filepath.Glob(path.Join(working, "data", "*"))
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	var wait sync.WaitGroup
+
+	for _, filename := range filenames {
+		filename := filename
+		wait.Add(1)
+		f := data.File{
+			Path: filename,
+			Mappers: []data.Mapper{recordize,encode},
+			Stream: records,
+		}
+		go func() {
+			basename := path.Base(filename)
+			log.Printf("START: %s\n", basename)
+			err := f.Load()
+			if err != nil {
+				log.Printf("ERROR: %s (%s)\n", basename, err)
+			}
+			log.Printf("DONE: %s\n", basename)
+			wait.Done()
+		}()
+	}
+
+	wait.Wait()
+	close(records)
+	log.Println("Waiting...")
+	<-done
+	log.Println("Flushing...")
+	xr.FlushAll()
+}
+
+func query() {
+	e = &encoder.Encoder{
+		Path: "./encoder"}
+	err := e.Load()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	t = &index.Template{
+		Directory: "./hash",
+		Dimension: e.Dimension}
+	t.Load()
+
+
+	server := index.NewServer(config.AccessKeyId, config.SecretAccessKey)
+	pk, _ := index.SignatureTableDescription.BuildPrimaryKey()
+	table := server.NewTable("signature", pk)
+
+	xr := index.NewIndex(100, table)
+
+	for {
+		bio := bufio.NewReader(os.Stdin)
+		fmt.Print(">> ")
+		line, err := bio.ReadString('\n')
+		if err != nil { break }
+
+		fields := strings.Split(strings.TrimSpace(line), ",")
+		log.Println(fields)
+		v := e.Encode(fields)
+		log.Println(v)
+		signature := t.Sign(v)
+		log.Println(signature)
+		candidates := xr.Query(signature)
+		log.Println(candidates)
+	}
+
+	log.Println("goodbye")
+}
+
 func main() {
 	fmt.Println(BANNER)
 
@@ -207,7 +340,9 @@ func main() {
 	case "createtable":
 		createTable()
 	case "index":
-		runindex()
+		index2()
+	case "query":
+		query()
 	case "version":
 		fmt.Println(VERSION)
 	default:
