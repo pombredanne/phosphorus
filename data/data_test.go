@@ -1,8 +1,8 @@
 package data
 
 import (
-	"log"
 	"io/ioutil"
+	"log"
 	"os"
 	"testing"
 	"willstclair.com/phosphorus/encoder"
