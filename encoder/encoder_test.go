@@ -8,10 +8,10 @@ import (
 	"testing"
 )
 
-var records = [][]interface{}{
-	[]interface{}{"a", 1},
-	[]interface{}{"b", 1},
-	[]interface{}{"c", 2}}
+var records = [][]string{
+	[]string{"a", "1"},
+	[]string{"b", "1"},
+	[]string{"c", "2"}}
 
 var f *Field
 var c Counter
@@ -47,7 +47,7 @@ func TestFieldCounts(t *testing.T) {
 
 func TestFieldCountResizing(t *testing.T) {
 	for i := 0; i < 10000; i++ {
-		f.Add(i)
+		f.Add(string(i))
 	}
 }
 
@@ -56,7 +56,7 @@ func TestCounterTerms(t *testing.T) {
 		t.Fail()
 	}
 
-	if c.Fields[1].Terms[2] != 1 {
+	if c.Fields[1].Terms["2"] != 1 {
 		t.Fail()
 	}
 }

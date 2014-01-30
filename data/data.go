@@ -13,7 +13,7 @@ import (
 
 type Record struct {
 	RecordId uint32
-	Fields   []interface{}
+	Fields   []string
 }
 
 type Data struct {
@@ -56,13 +56,7 @@ func fileReader(filename string, records chan *Record) error {
 			// continue
 		}
 
-		// temporary until I change the type to []string
-		var fields []interface{}
-		for _, field := range line[1:] {
-			fields = append(fields, interface{}(field))
-		}
-
-		records <- &Record{uint32(rId), fields}
+		records <- &Record{uint32(rId), line[1:]}
 	}
 	return nil
 }

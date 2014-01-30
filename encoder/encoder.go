@@ -9,18 +9,18 @@ import (
 
 type Field struct {
 	RecordCount int
-	Terms       map[interface{}]int
+	Terms       map[string]int
 	Counts      []int
 }
 
 func NewField() *Field {
 	var f Field
-	f.Terms = make(map[interface{}]int)
+	f.Terms = make(map[string]int)
 	f.Counts = make([]int, 0, 1024)
 	return &f
 }
 
-func (f *Field) Add(term interface{}) {
+func (f *Field) Add(term string) {
 	termId, seen := f.Terms[term]
 	if !seen {
 		f.Counts = append(f.Counts, 1)
@@ -36,7 +36,7 @@ type Counter struct {
 	Fields []*Field
 }
 
-func (c *Counter) Count(fields []interface{}) {
+func (c *Counter) Count(fields []string) {
 	for i, term := range fields {
 		if len(c.Fields) <= i {
 			c.Fields = append(c.Fields, NewField())
@@ -48,14 +48,14 @@ func (c *Counter) Count(fields []interface{}) {
 type Encoder struct {
 	Path      string
 	Dimension int
-	Terms     []map[interface{}]int
+	Terms     []map[string]int
 	Weights   [][]float64
 }
 
 func NewEncoder(c *Counter) *Encoder {
 	var e Encoder
 	e.Weights = make([][]float64, len(c.Fields))
-	e.Terms = make([]map[interface{}]int, len(c.Fields))
+	e.Terms = make([]map[string]int, len(c.Fields))
 
 	for i, f := range c.Fields {
 		e.Dimension += len(f.Counts)
@@ -69,7 +69,7 @@ func NewEncoder(c *Counter) *Encoder {
 	return &e
 }
 
-func (e *Encoder) Encode(fields []interface{}) vector.Interface {
+func (e *Encoder) Encode(fields []string) vector.Interface {
 	v := vector.NewSparseVector(e.Dimension, len(fields))
 
 	offset := 0
