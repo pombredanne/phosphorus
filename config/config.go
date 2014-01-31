@@ -1,15 +1,10 @@
 package config
 
 import (
-	"errors"
-	"time"
 	"encoding/json"
 	"io"
 	"fmt"
 	"strings"
-	"github.com/crowdmob/goamz/aws"
-	"github.com/crowdmob/goamz/s3"
-	"github.com/crowdmob/goamz/dynamodb"
 )
 
 // the boilerplate in here seems gratuitous and i'm sure there's some
@@ -278,124 +273,6 @@ func (f *IndexField) Validate() (err error) {
 		err = &Error{}
 		err.(*Error).Add("IndexField.Names must not be empty")
 	}
-
-	return
-}
-
-// generate a dynamodb table description
-func TableD(tableName, keyName string, read, write int) *dynamodb.TableDescriptionT {
-	return &dynamodb.TableDescriptionT{
-		AttributeDefinitions: []dynamodb.AttributeDefinitionT{
-			dynamodb.AttributeDefinitionT{
-				Name: keyName,
-				Type: dynamodb.TYPE_BINARY}},
-		KeySchema: []dynamodb.KeySchemaT{
-			dynamodb.KeySchemaT{
-				AttributeName: keyName,
-				KeyType:       "HASH"}},
-		ProvisionedThroughput: dynamodb.ProvisionedThroughputT{
-			ReadCapacityUnits: int64(read),
-			WriteCapacityUnits: int64(write)},
-		TableName: tableName}
-}
-
-type Environment struct {
-	token  aws.Auth
-	region aws.Region
-
-	DynamoServer *dynamodb.Server
-	IndexTableD *dynamodb.TableDescriptionT
-	SourceTableD *dynamodb.TableDescriptionT
-	IndexTable  *dynamodb.Table
-	SourceTable *dynamodb.Table
-
-	s3 *s3.S3
-	IndexBucket *s3.Bucket
-	IndexPrefix string
-
-	SourceBucket *s3.Bucket
-	SourcePrefix string
-}
-
-func BucketExists(b *s3.Bucket) (exists bool, err error) {
-	_, err = b.List("", "/", "", 10)
-	if err == nil {
-		exists = true
-	} else if err.(*s3.Error).Code == "NoSuchBucket" {
-		err = nil
-	}
-	return
-}
-
-// brutal
-func NewEnvironment(conf Configuration) (env *Environment, err error) {
-	// check our region
-	region, exists := aws.Regions[conf.AWSRegion]
-	if !exists {
-		err = errors.New(fmt.Sprintf("unknown AWS region: %q", conf.AWSRegion))
-		return
-	}
-
-	//
-	// Credentials (not sure all of this ceremony is necessary)
-	//
-	now := time.Now()
-	expires := now.Add(time.Duration(60) * time.Minute)
-	token, err := aws.GetAuth(conf.AccessKeyId, conf.SecretAccessKey, "", expires)
-	if err != nil { panic(err) }
-
-	env = &Environment{
-		region: region,
-		token: token,
-		DynamoServer: &dynamodb.Server{token,region},
-	}
-
-	//
-	// DynamoDB (this is so gross right now)
-	//
-
-	// setup for index table
-	var err_ error
-	env.IndexTableD, err_ = env.DynamoServer.DescribeTable(conf.Index.Table.Name)
-	if err_ != nil {
-		switch err_.(type) {
-		case *dynamodb.Error:
-			if err_.(*dynamodb.Error).Code == "ResourceNotFoundException" {
-				goto skip
-			}
-		}
-		err = err_
-		return
-	} else {
-		pk, _ := env.IndexTableD.BuildPrimaryKey()
-		env.IndexTable = env.DynamoServer.NewTable(conf.Index.Table.Name, pk)
-	}
-skip:
-	env.SourceTableD, err_ = env.DynamoServer.DescribeTable(conf.Source.Table.Name)
-
-	if err_ != nil {
-		switch err_.(type) {
-		case *dynamodb.Error:
-			if err_.(*dynamodb.Error).Code == "ResourceNotFoundException" {
-				goto skip2
-			}
-		}
-		err = err_
-		return
-	} else {
-		pk, _ := env.SourceTableD.BuildPrimaryKey()
-		env.SourceTable = env.DynamoServer.NewTable(conf.Source.Table.Name, pk)
-	}
-skip2:
-
-	//
-	// S3
-	//
-	env.s3 = s3.New(env.token, env.region)
-	env.IndexBucket = env.s3.Bucket(conf.Index.S3.Bucket)
-	env.IndexPrefix = conf.Index.S3.Prefix
-	env.SourceBucket = env.s3.Bucket(conf.Source.S3.Bucket)
-	env.SourcePrefix = conf.Index.S3.Prefix
 
 	return
 }
