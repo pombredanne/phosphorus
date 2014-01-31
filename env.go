@@ -10,15 +10,10 @@ import (
 
 const (
 	TPL_NOTABLE = "%s table: <does not exist>\n"
-	TPL_TABLE = `%s table:
-\tStatus: %s
-\tItems:  %d
-\tReadCapacityUnits: %d
-\tWriteCapacityUnits: %d
-\tSize: %d B\n\n
-`
+	TPL_TABLE = "%s table:\n\tStatus: %s\n\tItems:  %d\n\tReadCapacityUnits: %d\n\tWriteCapacityUnits: %d\n\tSize: %d B\n\n"
+
 	TPL_NOBUCKET = "%s bucket: <does not exist>\n"
-	TPL_BUCKET = "%s bucket: exists"
+	TPL_BUCKET = "%s bucket: exists\n"
 )
 
 var cmdEnv = &Command{

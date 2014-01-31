@@ -283,7 +283,7 @@ func (f *IndexField) Validate() (err error) {
 }
 
 // generate a dynamodb table description
-func tableD(tableName, keyName string, read, write int) *dynamodb.TableDescriptionT {
+func TableD(tableName, keyName string, read, write int) *dynamodb.TableDescriptionT {
 	return &dynamodb.TableDescriptionT{
 		AttributeDefinitions: []dynamodb.AttributeDefinitionT{
 			dynamodb.AttributeDefinitionT{
@@ -303,7 +303,7 @@ type Environment struct {
 	token  aws.Auth
 	region aws.Region
 
-	dynamoServer *dynamodb.Server
+	DynamoServer *dynamodb.Server
 	IndexTableD *dynamodb.TableDescriptionT
 	SourceTableD *dynamodb.TableDescriptionT
 	IndexTable  *dynamodb.Table
@@ -315,6 +315,16 @@ type Environment struct {
 
 	SourceBucket *s3.Bucket
 	SourcePrefix string
+}
+
+func BucketExists(b *s3.Bucket) (exists bool, err error) {
+	_, err = b.List("", "/", "", 10)
+	if err == nil {
+		exists = true
+	} else if err.(*s3.Error).Code == "NoSuchBucket" {
+		err = nil
+	}
+	return
 }
 
 // brutal
@@ -337,7 +347,7 @@ func NewEnvironment(conf Configuration) (env *Environment, err error) {
 	env = &Environment{
 		region: region,
 		token: token,
-		dynamoServer: &dynamodb.Server{token,region},
+		DynamoServer: &dynamodb.Server{token,region},
 	}
 
 	//
@@ -346,7 +356,7 @@ func NewEnvironment(conf Configuration) (env *Environment, err error) {
 
 	// setup for index table
 	var err_ error
-	env.IndexTableD, err_ = env.dynamoServer.DescribeTable(conf.Index.Table.Name)
+	env.IndexTableD, err_ = env.DynamoServer.DescribeTable(conf.Index.Table.Name)
 	if err_ != nil {
 		switch err_.(type) {
 		case *dynamodb.Error:
@@ -356,9 +366,12 @@ func NewEnvironment(conf Configuration) (env *Environment, err error) {
 		}
 		err = err_
 		return
+	} else {
+		pk, _ := env.IndexTableD.BuildPrimaryKey()
+		env.IndexTable = env.DynamoServer.NewTable(conf.Index.Table.Name, pk)
 	}
 skip:
-	env.SourceTableD, err_ = env.dynamoServer.DescribeTable(conf.Source.Table.Name)
+	env.SourceTableD, err_ = env.DynamoServer.DescribeTable(conf.Source.Table.Name)
 
 	if err_ != nil {
 		switch err_.(type) {
@@ -369,6 +382,9 @@ skip:
 		}
 		err = err_
 		return
+	} else {
+		pk, _ := env.SourceTableD.BuildPrimaryKey()
+		env.SourceTable = env.DynamoServer.NewTable(conf.Source.Table.Name, pk)
 	}
 skip2:
 

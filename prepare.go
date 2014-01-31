@@ -1,6 +1,12 @@
 package main
 
-import ()
+import (
+	"os"
+	"log"
+	"fmt"
+	"willstclair.com/phosphorus/config"
+	"github.com/crowdmob/goamz/s3"
+)
 
 var cmdPrepare = &Command{
 	Run: runPrepare,
@@ -9,31 +15,76 @@ var cmdPrepare = &Command{
 }
 
 func runPrepare(cmd *Command, args []string) {
-}
+	fmt.Fprintf(os.Stderr, "Preparing the environment...\n")
 
-var cmdDestroy = &Command{
-	Run: runDestroy,
-	UsageLine: "destroy",
-	Short: "destroy AWS resources",
-}
+	env, err := config.NewEnvironment(conf)
+	if err != nil {
+		log.Println(err)
+		os.Exit(2)
+	}
 
-func runDestroy(cmd *Command, args []string) {
-}
+	// index table
+	if env.IndexTable == nil {
+		log.Println("Creating: Index table")
+		_, err := env.DynamoServer.CreateTable(
+			*config.TableD(conf.Index.Table.Name, "s",
+				conf.Index.Table.ReadCapacityUnits,
+				conf.Index.Table.WriteCapacityUnits))
 
-var cmdSource = &Command{
-	Run: runSource,
-	UsageLine: "source",
-	Short: "populate the source table",
-}
+		if err != nil {
+			log.Println(err)
+			os.Exit(2)
+		}
 
-func runSource(cmd *Command, args []string) {
-}
+		log.Println("Created: Index table")
+	}
 
-var cmdIndex = &Command{
-	Run: runIndex,
-	UsageLine: "index",
-	Short: "build the index",
-}
+	// source table
+	if env.SourceTable == nil {
+		log.Println("Creating: Source table")
+		_, err := env.DynamoServer.CreateTable(
+			*config.TableD(conf.Source.Table.Name, "r",
+				conf.Source.Table.ReadCapacityUnits,
+				conf.Source.Table.WriteCapacityUnits))
+		if err != nil {
+			log.Println(err)
+			os.Exit(2)
+		}
 
-func runIndex(cmd *Command, args []string) {
+		log.Println("Created: Source table")
+	}
+
+	// index bucket
+	exists, err := config.BucketExists(env.IndexBucket)
+	if err != nil {
+		log.Println(err)
+		os.Exit(2)
+	}
+	if !exists {
+		log.Println("Creating: Index bucket")
+		err = env.IndexBucket.PutBucket(s3.Private)
+		if err != nil {
+			log.Println(err)
+			os.Exit(2)
+		}
+		log.Println("Created: Index bucket")
+	}
+
+	// source bucket
+	exists, err = config.BucketExists(env.SourceBucket)
+	if err != nil {
+		log.Println(err)
+		os.Exit(2)
+	}
+	if !exists {
+		log.Println("Creating: Source bucket")
+		err = env.SourceBucket.PutBucket(s3.Private)
+		if err != nil {
+			log.Println(err)
+			os.Exit(2)
+		}
+		log.Println("Created: Source bucket")
+	}
+
+	log.Println("OK")
 }
