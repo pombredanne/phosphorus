@@ -1,14 +1,15 @@
 {
-    "MaxProcs": 3,
-    "AccessKeyId": "akia",
-    "SecretAccessKey": "dfghj",
+    "MaxProcs": 5,
+    "AWSRegion": "us-east-1",
+    "AccessKeyId": "AKIAJOVET22FUD3OXPMQ",
+    "SecretAccessKey": "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",
     "Source": {
 	"S3": {
-	    "Bucket": "phosphorus",
-	    "Prefix": "deadb33f-data/"
+	    "Bucket": "willstclair-phosphorus",
+	    "Prefix": "source/"
 	},
 	"Table": {
-	    "Name": "florida-20140130",
+	    "Name": "phosphorus-source-20140130",
 	    "ReadCapacityUnits": 10,
 	    "WriteCapacityUnits": 10
 	},
@@ -44,26 +45,26 @@
     },
     "Index": {
 	"S3": {
-	    "Bucket": "phosphorus",
-	    "Prefix": "deadb33f-index/"
+	    "Bucket": "willstclair-phosphorus",
+	    "Prefix": "index/"
 	},
 	"Table": {
-	    "Name": "phosphorus-20140130",
+	    "Name": "phosphorus-index-20140130",
 	    "ReadCapacityUnits": 10,
 	    "WriteCapacityUnits": 10
 	},
 	"IndexFields": [
 	    {
-		"SourceFields": ["last_name"]
+		"Names": ["last_name"]
 	    },
 	    {
-		"SourceFields": ["first_name"]
+		"Names": ["first_name"]
 	    },
 	    {
-		"SourceFields": ["birth_year"]
+		"Names": ["birth_year"]
 	    },
 	    {
-		"SourceFields": ["birth_month", "birth_day"]
+		"Names": ["birth_month", "birth_day"]
 	    }
 	]
     }

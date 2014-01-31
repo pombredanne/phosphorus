@@ -1,9 +1,15 @@
 package data
 
 import (
+	"time"
+	"bytes"
 	"io/ioutil"
+	"log"
 	"os"
 	"testing"
+	"github.com/crowdmob/goamz/aws"
+	"github.com/crowdmob/goamz/s3"
+	"github.com/crowdmob/goamz/s3/s3test"
 )
 
 const (
@@ -100,4 +106,40 @@ func TestFile(t *testing.T) {
 	if count < len(expected) {
 		t.Fail()
 	}
+}
+
+func TestS3(t *testing.T) {
+	s3server, err := s3test.NewServer(&s3test.Config{})
+	if err != nil { panic(err) }
+
+	now := time.Now()
+	expires := now.Add(time.Duration(60) * time.Minute)
+	token, err := aws.GetAuth("phosphorus-test", "secret", "", expires)
+	if err != nil { panic(err) }
+
+	region := aws.Region{
+		Name: "test",
+		S3Endpoint: s3server.URL(),
+		S3LocationConstraint: true }
+
+	mys3 := s3.New(token, region)
+	log.Println(mys3)
+	bucket := mys3.Bucket("mybucket")
+	err = bucket.PutBucket(s3.Private)
+	if err != nil { panic(err) }
+	log.Println(bucket)
+
+
+	buf := bytes.NewBufferString("test")
+	err = bucket.Put("files/test.dat", buf.Bytes(), "text/plain",
+		s3.Private, s3.Options{})
+
+	if err != nil { panic(err) }
+	data, err := bucket.Get("files/test.dat")
+	if err != nil { panic(err) }
+
+	log.Println(bytes.NewBuffer(data).String())
+
+
+	t.Fail()
 }
