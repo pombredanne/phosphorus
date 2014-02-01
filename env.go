@@ -3,8 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
-	"willstclair.com/phosphorus/config"
-	"github.com/crowdmob/goamz/s3"
+	"willstclair.com/phosphorus/environment"
 	"log"
 )
 
@@ -25,45 +24,45 @@ var cmdEnv = &Command{
 func runEnv(cmd *Command, args []string) {
 	fmt.Fprintf(os.Stderr, "configuration path: %s (from %s)\n\n", confPath, confFrom)
 
-	env, err := config.NewEnvironment(conf)
+	env, err := environment.New(conf)
 	if err != nil {
 		log.Println(err)
 		os.Exit(2)
 	}
 
-	if env.IndexTable != nil {
-		fmt.Fprintf(os.Stderr, TPL_TABLE, "Index",
-			env.IndexTableD.TableStatus,
-			env.IndexTableD.ItemCount,
-			env.IndexTableD.ProvisionedThroughput.ReadCapacityUnits,
-			env.IndexTableD.ProvisionedThroughput.WriteCapacityUnits,
-			env.IndexTableD.TableSizeBytes)
+	if exists, err := env.IndexTable.Exists(); err == nil && exists {
+		fmt.Fprintf(os.Stderr, "IndexTable: exists\n")
+	} else if err != nil {
+		log.Println(err)
+		os.Exit(1)
 	} else {
-		fmt.Fprintf(os.Stderr, TPL_NOTABLE, "Index")
+		fmt.Fprintf(os.Stderr, "IndexTable: does not exist\n")
 	}
 
-	if env.SourceTable != nil {
-		fmt.Fprintf(os.Stderr, TPL_TABLE, "Source",
- 			env.SourceTableD.TableStatus,
-			env.SourceTableD.ItemCount,
-			env.SourceTableD.ProvisionedThroughput.ReadCapacityUnits,
-			env.SourceTableD.ProvisionedThroughput.WriteCapacityUnits,
-			env.SourceTableD.TableSizeBytes)
+	if exists, err := env.IndexBucket.Exists(); err == nil && exists {
+		fmt.Fprintf(os.Stderr, "IndexBucket: exists\n")
+	} else if err != nil {
+		log.Println(err)
+		os.Exit(1)
 	} else {
-		fmt.Fprintf(os.Stderr, TPL_NOTABLE, "Source")
+		fmt.Fprintf(os.Stderr, "IndexBucket: does not exist\n")
 	}
 
-	_, err = env.IndexBucket.List(env.IndexPrefix, "/", "", 10)
-	if err != nil && err.(*s3.Error).Code == "NoSuchBucket" {
-		fmt.Fprintf(os.Stderr, TPL_NOBUCKET, "Index")
+	if exists, err := env.SourceTable.Exists(); err == nil && exists {
+		fmt.Fprintf(os.Stderr, "SourceTable: exists\n")
+	} else if err != nil {
+		log.Println(err)
+		os.Exit(1)
 	} else {
-		fmt.Fprintf(os.Stderr, TPL_BUCKET, "Index")
+		fmt.Fprintf(os.Stderr, "SourceTable: does not exist\n")
 	}
 
-	_, err = env.SourceBucket.List(env.SourcePrefix, "/", "", 10)
-	if err != nil && err.(*s3.Error).Code == "NoSuchBucket" {
-		fmt.Fprintf(os.Stderr, TPL_NOBUCKET, "Source")
+	if exists, err := env.SourceBucket.Exists(); err == nil && exists {
+		fmt.Fprintf(os.Stderr, "SourceBucket: exists\n")
+	} else if err != nil {
+		log.Println(err)
+		os.Exit(1)
 	} else {
-		fmt.Fprintf(os.Stderr, TPL_BUCKET, "Source")
+		fmt.Fprintf(os.Stderr, "SourceBucket: does not exist\n")
 	}
 }

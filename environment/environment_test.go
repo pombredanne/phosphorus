@@ -14,26 +14,14 @@ import (
 	crand "crypto/rand"
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/dynamodb"
+	"github.com/crowdmob/goamz/s3/s3test"
+	s3_ "github.com/crowdmob/goamz/s3"
 )
 
-var LocalRegion = aws.Region{
-	"localhost",
-	"https://ec2.us-east-1.amazonaws.com",
-	"https://s3.amazonaws.com",
-	"",
-	false,
-	false,
-	"https://sdb.amazonaws.com",
-	"https://sns.us-east-1.amazonaws.com",
-	"https://sqs.us-east-1.amazonaws.com",
-	"https://iam.amazonaws.com",
-	"https://elasticloadbalancing.us-east-1.amazonaws.com",
-	"http://localhost:8000",
-	aws.ServiceInfo{"https://monitoring.us-east-1.amazonaws.com", aws.V2Signature},
-	"https://autoscaling.us-east-1.amazonaws.com",
-	aws.ServiceInfo{"https://rds.us-east-1.amazonaws.com", aws.V2Signature}}
-
+var region aws.Region
 var dynamo *dynamodb.Server
+var s3server *s3_.S3
+var token *aws.Auth
 
 func init() {
 	seedRandom()
@@ -45,8 +33,18 @@ func init() {
 		panic(err)
 	}
 
-	// localRegion := aws.Reg
-	dynamo = &dynamodb.Server{token, LocalRegion}
+	s3testserver, err := s3test.NewServer(&s3test.Config{})
+	if err != nil { panic(err) }
+
+	region = aws.Region{
+		Name: "test",
+		S3Endpoint: s3testserver.URL(),
+		S3LocationConstraint: true,
+		DynamoDBEndpoint: "http://localhost:8000",
+	}
+
+	dynamo = &dynamodb.Server{token, region}
+	s3server = s3_.New(token, region)
 }
 
 func seedRandom() {
@@ -67,6 +65,7 @@ func createTable() string {
 	if err != nil {
 		panic(err)
 	}
+
 	return name
 }
 
@@ -197,5 +196,117 @@ func TestBatchPut(t *testing.T) {
 		// 		panic(err)
 		// 	}
 		// }
+	}
+}
+
+func TestPutChannel(t *testing.T) {
+	name := createTable()
+	tbl := &table{dynamo, name, "k", nil}
+	tbl.Load()
+
+	c := tbl.PutChannel()
+	for i := 0; i < 30; i++ {
+		k := dynamodb.Key{binKey(int64(i)), ""}
+		c <- Item{k,[]dynamodb.Attribute{
+			*dynamodb.NewStringAttribute("test", "test")}}
+	}
+
+	close(c)
+
+	for i := 0; i < 30; i++ {
+		k := dynamodb.Key{binKey(int64(i)), ""}
+		_, err := tbl.table.GetItem(&k)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
+func TestAddChannel(t *testing.T) {
+	name := createTable()
+	tbl := &table{dynamo, name, "k", nil}
+	tbl.Load()
+
+	k := dynamodb.Key{binKey(92825), ""}
+
+	c := tbl.AddChannel()
+	c <- Item{k,[]dynamodb.Attribute{
+		*dynamodb.NewStringSetAttribute("colors", []string{"red"})}}
+	c <- Item{k,[]dynamodb.Attribute{
+		*dynamodb.NewStringSetAttribute("colors", []string{"blue"})}}
+
+	close(c)
+
+	time.Sleep(100 * time.Millisecond)
+
+	item, err := tbl.table.GetItem(&k)
+	if err != nil {
+		panic(err)
+	}
+
+	if len(item["colors"].SetValues) != 2 {
+		t.Fail()
+	}
+}
+
+func TestBucketDoesNotExist(t *testing.T) {
+	bkt := &bucket{s3server, "does-not-exist", "", nil}
+	exists, err := bkt.Exists()
+	if err != nil {
+		t.Error(err)
+	}
+	if exists {
+		t.Fail()
+	}
+}
+
+func TestBucketExists(t *testing.T) {
+	preExisting := s3server.Bucket("exists")
+	err := preExisting.PutBucket(s3_.Private)
+	if err != nil { panic(err) }
+
+	bkt := &bucket{s3server, "exists", "", nil}
+	exists, err := bkt.Exists()
+	if err != nil {
+		t.Error(err)
+	}
+	if !exists {
+		t.Fail()
+	}
+}
+
+func TestCreateBucket(t *testing.T) {
+	bkt := &bucket{s3server, "new-bucket", "", nil}
+	err := bkt.Create()
+	if err != nil {
+		t.Error(err)
+	}
+
+	bkt = &bucket{s3server, "new-bucket", "", nil}
+	exists, err := bkt.Exists()
+	if err != nil {
+		panic(err)
+	}
+	if !exists {
+		t.Fail()
+	}
+}
+
+func TestDestroyBucket(t *testing.T) {
+	bkt := &bucket{s3server, "new-bucket", "", nil}
+	err := bkt.Create()
+	if err != nil {
+		t.Error(err)
+	}
+
+	bkt = &bucket{s3server, "new-bucket", "", nil}
+	err = bkt.Destroy()
+	if err != nil {
+		panic(err)
+	}
+
+	exists, err := bkt.Exists()
+	if exists {
+		t.Fail()
 	}
 }

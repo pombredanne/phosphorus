@@ -2,13 +2,14 @@
 package environment
 
 import (
+	"fmt"
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/dynamodb"
-	"github.com/crowdmob/goamz/s3"
+	s3_ "github.com/crowdmob/goamz/s3"
 	"willstclair.com/phosphorus/config"
 	"errors"
-	"fmt"
 	"time"
+	// "log"
 )
 
 type table struct {
@@ -161,6 +162,59 @@ func (t *table) BatchPut(items [][]dynamodb.Attribute) error {
 	return nil
 }
 
+type Item struct {
+	Key        dynamodb.Key
+	Attributes []dynamodb.Attribute
+}
+
+func (i *Item) ToAttributes(keyName string) (attrs []dynamodb.Attribute) {
+	attrs = make([]dynamodb.Attribute, len(i.Attributes) + 1)
+	attrs[0] = *dynamodb.NewBinaryAttribute(keyName, i.Key.HashKey)
+	for i, attr := range i.Attributes {
+		attrs[i+1] = attr
+	}
+	return
+}
+
+func (t *table) PutChannel() (c chan Item) {
+	c = make(chan Item)
+
+	go func() {
+		items := make([][]dynamodb.Attribute, 0, 25)
+		for item := range c {
+			items = append(items, item.ToAttributes(t.key))
+			if len(items) == 25 {
+				err := t.BatchPut(items)
+				if err != nil {
+					panic(err)
+				}
+				items = make([][]dynamodb.Attribute, 0, 25)
+			}
+		}
+		err := t.BatchPut(items)
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	return
+}
+
+func (t *table) AddChannel() (c chan Item) {
+	c = make(chan Item)
+
+	go func() {
+		for item := range c {
+			_, err := t.table.AddAttributes(&item.Key, item.Attributes)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}()
+
+	return
+}
+
 // generate a dynamodb table description
 func tableD(tableName, keyName string) *dynamodb.TableDescriptionT {
 	return &dynamodb.TableDescriptionT{
@@ -178,36 +232,59 @@ func tableD(tableName, keyName string) *dynamodb.TableDescriptionT {
 		TableName: tableName}
 }
 
+type bucket struct {
+	server *s3_.S3
+	name string
+	prefix string
+	bucket *s3_.Bucket
+}
+
+func (b *bucket) Exists() (exists bool, err error) {
+	if b.bucket == nil {
+		b.bucket = b.server.Bucket(b.name)
+	}
+
+	_, err = b.bucket.List(b.prefix, "/", "", 10)
+	if err != nil && err.(*s3_.Error).Code == "NoSuchBucket" {
+		err = nil
+	} else if err == nil {
+		exists = true
+	}
+
+	return
+}
+
+func (b *bucket) Create() (err error) {
+	if b.bucket == nil {
+		b.bucket = b.server.Bucket(b.name)
+	}
+	err = b.bucket.PutBucket(s3_.Private)
+	return
+}
+
+func (b *bucket) Destroy() (err error) {
+	if b.bucket == nil {
+		b.bucket = b.server.Bucket(b.name)
+	}
+	err = b.bucket.DelBucket()
+	return
+}
+
 type Environment struct {
 	token  aws.Auth
 	region aws.Region
 
-	DynamoServer *dynamodb.Server
-	IndexTableD *dynamodb.TableDescriptionT
-	SourceTableD *dynamodb.TableDescriptionT
-	IndexTable  *dynamodb.Table
-	SourceTable *dynamodb.Table
+	dynamo *dynamodb.Server
+	s3     *s3_.S3
 
-	s3 *s3.S3
-	IndexBucket *s3.Bucket
-	IndexPrefix string
+	IndexTable *table
+	SourceTable *table
 
-	SourceBucket *s3.Bucket
-	SourcePrefix string
+	IndexBucket *bucket
+	SourceBucket *bucket
 }
 
-func BucketExists(b *s3.Bucket) (exists bool, err error) {
-	_, err = b.List("", "/", "", 10)
-	if err == nil {
-		exists = true
-	} else if err.(*s3.Error).Code == "NoSuchBucket" {
-		err = nil
-	}
-	return
-}
-
-// brutal
-func NewEnvironment(conf config.Configuration) (env *Environment, err error) {
+func New(conf config.Configuration) (env *Environment, err error) {
 	// check our region
 	region, exists := aws.Regions[conf.AWSRegion]
 	if !exists {
@@ -221,60 +298,24 @@ func NewEnvironment(conf config.Configuration) (env *Environment, err error) {
 	now := time.Now()
 	expires := now.Add(time.Duration(60) * time.Minute)
 	token, err := aws.GetAuth(conf.AccessKeyId, conf.SecretAccessKey, "", expires)
-	if err != nil { panic(err) }
+	if err != nil {
+		return
+	}
 
+	dynamo := &dynamodb.Server{token,region}
+	s3 := s3_.New(token, region)
 	env = &Environment{
 		region: region,
 		token: token,
-		DynamoServer: &dynamodb.Server{token,region},
+		dynamo: dynamo,
+		s3: s3,
+		IndexTable: &table{dynamo, conf.Index.Table.Name, "s", nil},
+		SourceTable: &table{dynamo, conf.Source.Table.Name, "r", nil},
+		IndexBucket: &bucket{s3,
+			conf.Index.S3.Bucket, conf.Index.S3.Prefix, nil},
+		SourceBucket: &bucket{s3,
+			conf.Source.S3.Bucket, conf.Source.S3.Prefix, nil},
 	}
-
-	//
-	// DynamoDB (this is so gross right now)
-	//
-
-	// setup for index table
-	var err_ error
-	env.IndexTableD, err_ = env.DynamoServer.DescribeTable(conf.Index.Table.Name)
-	if err_ != nil {
-		switch err_.(type) {
-		case *dynamodb.Error:
-			if err_.(*dynamodb.Error).Code == "ResourceNotFoundException" {
-				goto skip
-			}
-		}
-		err = err_
-		return
-	} else {
-		pk, _ := env.IndexTableD.BuildPrimaryKey()
-		env.IndexTable = env.DynamoServer.NewTable(conf.Index.Table.Name, pk)
-	}
-skip:
-	env.SourceTableD, err_ = env.DynamoServer.DescribeTable(conf.Source.Table.Name)
-
-	if err_ != nil {
-		switch err_.(type) {
-		case *dynamodb.Error:
-			if err_.(*dynamodb.Error).Code == "ResourceNotFoundException" {
-				goto skip2
-			}
-		}
-		err = err_
-		return
-	} else {
-		pk, _ := env.SourceTableD.BuildPrimaryKey()
-		env.SourceTable = env.DynamoServer.NewTable(conf.Source.Table.Name, pk)
-	}
-skip2:
-
-	//
-	// S3
-	//
-	env.s3 = s3.New(env.token, env.region)
-	env.IndexBucket = env.s3.Bucket(conf.Index.S3.Bucket)
-	env.IndexPrefix = conf.Index.S3.Prefix
-	env.SourceBucket = env.s3.Bucket(conf.Source.S3.Bucket)
-	env.SourcePrefix = conf.Index.S3.Prefix
 
 	return
 }
