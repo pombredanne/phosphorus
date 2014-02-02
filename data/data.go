@@ -10,12 +10,9 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+	"github.com/crowdmob/goamz/dynamodb"
+	"willstclair.com/phosphorus/environment"
 )
-
-type Record struct {
-	RecordId uint32
-	Fields   []string
-}
 
 type Data struct {
 	working    string
@@ -99,44 +96,21 @@ func (d *Data) Slurp(fn Slurper) error {
 	return nil
 }
 
-
-
-// func (d *Data) Map(fn Mapper, out chan interface{}) error {
-// 	var wait sync.WaitGroup
-
-// 	filenames, err := filepath.Glob(path.Join(d.working), "*")
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	for _, filename := range files {
-// 		<-d.sem
-// 		wait.Add(1)
-// 		filename := filename
-
-// 	}
-// }
-
 type Mapper func(interface{}) (interface{}, error)
 
 type File struct {
-	Path string
 	Mappers []Mapper
 	Stream chan interface{}
-	handle *os.File
+
 }
 
-func (f *File) Load() (err error) {
-	f.handle, err = os.Open(f.Path)
-	if err != nil {
-		return
-	}
-	defer f.handle.Close()
+func (f *File) Load(r io.Reader) (err error) {
+	defer r.Close()
 
-	r := csv.NewReader(f.handle)
+	rdr := csv.NewReader(f.handle)
 
 outer:
-	for line, err := r.Read(); err != io.EOF; line, err = r.Read() {
+	for line, err := rdr.Read(); err != io.EOF; line, err = rdr.Read() {
 		if err != nil {
 			// todo: error channel
 			log.Println(err)
@@ -154,5 +128,42 @@ outer:
 		}
 		f.Stream <- record
 	}
+	return
+}
+
+type Attribute struct {
+	Column int
+	Name string
+	ShortName string
+}
+
+type Description struct {
+	Attributes []Attribute
+}
+
+func (d *Description) Parse(fields []string) (r *Record) {
+	r = &Record{strconv.ParseUint(fields[0], 0, 32), make(map[string]string)}
+	for _, a := range d.Attributes {
+		r.Fields[a.ShortName] = fields[a.Column]
+	}
+
+	return
+}
+
+type Record struct {
+	RecordId uint32
+	Fields   map[string]string
+}
+
+func (r *Record) ToItem() (item *environment.Item) {
+	var attrs []dynamodb.Attribute
+
+	for k, v := range r.Fields {
+		attrs = append(attrs, dynamodb.NewStringAttribute(k, v))
+	}
+
+	item = &environment.Item{
+		dynamodb.Key{environment.Enc64(r.RecordId),""},
+		attrs}
 	return
 }
