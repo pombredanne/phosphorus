@@ -1,7 +1,11 @@
-
 package environment
 
 import (
+	"sync"
+	"bytes"
+	"encoding/base64"
+	"encoding/binary"
+	// "log"
 	"fmt"
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/dynamodb"
@@ -176,6 +180,39 @@ func (i *Item) ToAttributes(keyName string) (attrs []dynamodb.Attribute) {
 	return
 }
 
+func Dec64(e string) (i uint32) {
+	b, err := base64.StdEncoding.DecodeString(e)
+	if err != nil { panic(err) }
+	buf := bytes.NewBuffer(b)
+	binary.Read(buf, binary.BigEndian, &i)
+	return
+}
+
+func Enc64(i uint32) (e string) {
+	var buf bytes.Buffer
+	binary.Write(&buf, binary.BigEndian, i)
+	e = base64.StdEncoding.EncodeToString(buf.Bytes())
+	return
+}
+
+func NewSetItem(key uint32, members []uint32) (item *Item) {
+	var buf bytes.Buffer
+	var encodedSet []string
+
+	for _, m := range members {
+		encodedSet = append(encodedSet, Enc64(m))
+	}
+
+	buf.Reset()
+
+	item = &Item{
+		dynamodb.Key{Enc64(key),""},
+		[]dynamodb.Attribute{
+			*dynamodb.NewBinarySetAttribute("i", encodedSet)}}
+
+	return
+}
+
 func (t *table) PutChannel() (c chan Item) {
 	c = make(chan Item)
 
@@ -212,6 +249,45 @@ func (t *table) AddChannel() (c chan Item) {
 		}
 	}()
 
+	return
+}
+
+func dynamoKeys(keys []uint32) (dkeys []dynamodb.Key) {
+	for _, k := range keys {
+		dkeys = append(dkeys, dynamodb.Key{HashKey: Enc64(k)})
+	}
+	return
+}
+
+func (t *table) BatchGet(keys []uint32, c chan uint32) (err error) {
+	bgi := t.table.BatchGetItems(dynamoKeys(keys))
+	results, err := bgi.Execute()
+	// No throughput throttle handling here yet. Need to double-check goamz
+	// to see what happens to the UnprocessedKeys field in the response.
+	if err != nil {
+		return
+	}
+
+	for _, r := range results[t.name] {
+		for _, k := range r["i"].SetValues {
+			c <- Dec64(k)
+		}
+	}
+	return
+}
+
+func (t *table) MultiGet(keys []uint32, c chan uint32) {
+	var wait sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		i := i
+		wait.Add(1)
+		go func() {
+			t.BatchGet(keys[i*16:(i+1)*16], c)
+			wait.Done()
+		}()
+	}
+	wait.Wait()
+	close(c)
 	return
 }
 

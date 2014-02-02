@@ -3,41 +3,17 @@ package index
 import (
 	"encoding/gob"
 	"fmt"
-	"github.com/crowdmob/goamz/dynamodb"
 	"io/ioutil"
 	"os"
 	"testing"
-	"time"
 	"willstclair.com/phosphorus/vector"
+	"willstclair.com/phosphorus/environment"
 )
-
-var server *dynamodb.Server
-var table *dynamodb.Table
-
-func init() {
-	server = NewServer("phosphorustest", "secret")
-	cycleTable()
-}
-
-func cycleTable() {
-	server.DeleteTable(SignatureTableDescription)
-	server.CreateTable(SignatureTableDescription)
-	pk, _ := SignatureTableDescription.BuildPrimaryKey()
-	table = server.NewTable("signature", pk)
-}
 
 func TestSignature(t *testing.T) {
 	var s Signature
 	s[127] = 0xbeef
 	if s.Key(127) != 0x7fbeef {
-		t.Fail()
-	}
-}
-
-func TestSignatureKeys(t *testing.T) {
-	var s Signature
-	s[127] = 0xbeef
-	if s.Keys64()[127] != "f77v" {
 		t.Fail()
 	}
 }
@@ -167,21 +143,6 @@ func TestTemplateSign(t *testing.T) {
 	t.Fail()
 }
 
-func TestSaveEntry(t *testing.T) {
-	cycleTable()
-
-	e := Entry{0x7fbeef, []uint32{0x00c0ffee}}
-	err := e.Save(table)
-	if err != nil {
-		t.Error(err)
-	}
-
-	response, _ := table.GetItem(&dynamodb.Key{HashKey: "f77v"})
-	if response["i"].SetValues[0] != "AMD/7g==" {
-		t.Fail()
-	}
-}
-
 func fakeSig() *Signature {
 	var sig Signature
 	for i := 0; i < 128; i += 2 {
@@ -192,61 +153,67 @@ func fakeSig() *Signature {
 }
 
 func TestIndexManualFlush(t *testing.T) {
-	cycleTable()
-
+	wc := make(chan *environment.Item)
 	sig := fakeSig()
-	xr := NewIndex(2, table)
+	xr := NewIndex(2, wc)
 
 	xr.Add(0xbeefcafe, sig)
-	xr.Flush(0x7fbeef)
-	response, _ := table.GetItem(&dynamodb.Key{HashKey: "f77v"})
-	if len(response["i"].SetValues) != 1 {
+	go xr.Flush(0x7fbeef)
+
+	item := <-wc
+
+	if environment.Dec64(item.Key.HashKey) != 0x7fbeef {
 		t.Fail()
 	}
-	time.Sleep(1 * time.Millisecond)
+
+	if environment.Dec64(item.Attributes[0].SetValues[0]) != 0xbeefcafe {
+		t.Fail()
+	}
 }
 
 func TestIndexAutoFlush(t *testing.T) {
-	cycleTable()
-
+	wc := make(chan *environment.Item)
 	sig := fakeSig()
-	xr := NewIndex(2, table)
+	xr := NewIndex(2, wc)
 	xr.Add(0xdeadbeef, sig)
-	xr.Add(0x00c0ffee, sig)
+	go xr.Add(0xc0ffee, sig)
 
-	time.Sleep(500 * time.Millisecond) // gross
+	// time.Sleep(500 * time.Millisecond) // gross
 
-	response, _ := table.GetItem(&dynamodb.Key{HashKey: "f77v"})
-	if len(response["i"].SetValues) != 2 {
+	item := <- wc
+	if len(item.Attributes[0].SetValues) != 2 {
 		t.Fail()
 	}
 }
 
-func TestIndexQuery(t *testing.T) {
-	cycleTable()
+func TestRank(t *testing.T) {
+	c := make(chan uint32)
 
-	var sig0 Signature
-	sig1 := fakeSig()
-	sig2 := fakeSig()
-	sig2[0] = 0
+	go func() {
+		for i := 0; i < 4; i++ {
+			c <- 0xdeadbeef
+			if i % 2 == 0 {
+				c <- 0xc0ffee
+			}
+		}
+		close(c)
+	}()
 
-	xr := NewIndex(2, table)
-	xr.Add(0xdeadbeef, sig1)
-	xr.Add(0x00c0ffee, sig2)
+	candidates := Rank(c)
 
-	xr.FlushAll()
-
-	x := NewIndex(2, table)
-	candidates := x.Query(sig1)
-	if candidates[0].Matches != 128 {
-		t.Fail()
-	}
-	if candidates[1].Matches != 127 {
+	if candidates[0].Matches != 4 {
 		t.Fail()
 	}
 
-	candidates = x.Query(&sig0)
-	if candidates[0].Matches != 1 {
+	if candidates[0].RecordId != 0xdeadbeef {
+		t.Fail()
+	}
+
+	if candidates[1].Matches != 2 {
+		t.Fail()
+	}
+
+	if candidates[1].RecordId != 0xc0ffee {
 		t.Fail()
 	}
 }
