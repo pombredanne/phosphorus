@@ -161,7 +161,7 @@ func loadConfig() (err error) {
 }
 
 func configInfo() {
-	log.Println("Configuration path: %s (from %s)\n\n", confPath, confFrom)
+	log.Printf("Configuration path: %s (from %s)\n\n", confPath, confFrom)
 }
 
 func msg(resource, disposition string) {

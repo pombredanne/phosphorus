@@ -1,6 +1,7 @@
 package environment
 
 import (
+	"log"
 	"bytes"
 	"encoding/base64"
 	"encoding/binary"
@@ -9,6 +10,7 @@ import (
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/dynamodb"
 	s3_ "github.com/crowdmob/goamz/s3"
+	"io"
 	"io/ioutil"
 	"os"
 	"sync"
@@ -150,7 +152,12 @@ func (t *table) BatchPut(items [][]dynamodb.Attribute) error {
 			switch err.(type) {
 			case *dynamodb.Error:
 				if err.(*dynamodb.Error).Code == "ProvisionedThroughputExceededException" {
+					log.Println("Backing off. Increase SourceTable write throughput.")
 					time.Sleep((1 << uint(attempt)) * time.Second)
+					continue
+				} else if err.(*dynamodb.Error).Code == "InternalServerError" {
+					log.Println("DynamoDB ISE. Retrying.")
+					time.Sleep((100 * (1 << uint(attempt))) * time.Millisecond)
 					continue
 				} else {
 					return err
@@ -221,7 +228,8 @@ func (t *table) PutChannel() (c chan Item) {
 		items := make([][]dynamodb.Attribute, 0, 25)
 		for item := range c {
 			items = append(items, item.ToAttributes(t.key))
-			if len(items) == 25 {
+			if len(items) == 20 {
+				// log.Printf("%d items: %s\n", len(items), items)
 				err := t.BatchPut(items)
 				if err != nil {
 					panic(err)
@@ -252,6 +260,14 @@ func (t *table) AddChannel() (c chan Item) {
 
 	return
 }
+
+// func (t *table) SetThroughput(units int) (err error) {
+// 	td, err := t.server.DescribeTable(t.name)
+// 	if err != nil {
+// 		return
+// 	}
+// 	return
+// }
 
 func dynamoKeys(keys []uint32) (dkeys []dynamodb.Key) {
 	for _, k := range keys {
@@ -345,6 +361,25 @@ func (b *bucket) Destroy() (err error) {
 	}
 	err = b.bucket.DelBucket()
 	return
+}
+
+func (b *bucket) OpenAll(c chan io.ReadCloser) error {
+	if b.bucket == nil {
+		b.bucket = b.server.Bucket(b.name)
+	}
+	listResp, err := b.bucket.List(b.prefix, "/", "", 1000)
+	if err != nil {
+		return err
+	}
+	for _, key := range listResp.Contents {
+		log.Printf("OpenAll: %s\n", key.Key)
+		rc, err := b.bucket.GetReader(key.Key)
+		if err != nil {
+			return err
+		}
+		c <- rc
+	}
+	return nil
 }
 
 type Environment struct {
