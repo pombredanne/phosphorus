@@ -1,6 +1,7 @@
 package environment
 
 import (
+	"io/ioutil"
 	"sync"
 	"bytes"
 	"encoding/base64"
@@ -358,9 +359,17 @@ type Environment struct {
 
 	IndexBucket *bucket
 	SourceBucket *bucket
+
+	TempDir string
 }
 
 func New(conf config.Configuration) (env *Environment, err error) {
+	// create a temporary directory
+	tempdir, err := ioutil.TempDir("","phosphorus")
+	if err != nil {
+		return
+	}
+
 	// check our region
 	region, exists := aws.Regions[conf.AWSRegion]
 	if !exists {
@@ -391,6 +400,7 @@ func New(conf config.Configuration) (env *Environment, err error) {
 			conf.Index.S3.Bucket, conf.Index.S3.Prefix, nil},
 		SourceBucket: &bucket{s3,
 			conf.Source.S3.Bucket, conf.Source.S3.Prefix, nil},
+		TempDir: tempdir,
 	}
 
 	return

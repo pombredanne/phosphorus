@@ -20,6 +20,4 @@ func runIndex(cmd *Command, args []string) {
 		log.Println(err)
 		os.Exit(2)
 	}
-
-
 }
