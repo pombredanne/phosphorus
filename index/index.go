@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"sort"
 	"sync"
 	"willstclair.com/phosphorus/environment"
@@ -64,7 +65,7 @@ func (t *Template) Load() {
 func (t *Template) Generate() {
 	var wait sync.WaitGroup
 	for i, _ := range t.family {
-		filename := fmt.Sprintf("hash_%02x", i)
+		filename := filepath.Join(t.Directory, fmt.Sprintf("hash_%02x", i))
 		wait.Add(1)
 		go func() {
 			file, err := os.Create(filename)

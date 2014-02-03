@@ -398,6 +398,28 @@ func (b *bucket) OpenAll(c chan io.ReadCloser) error {
 	return nil
 }
 
+func (b *bucket) Put(path string, name string) error {
+	if b.bucket == nil {
+		b.bucket = b.server.Bucket(b.name)
+	}
+
+	fi, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	err = b.bucket.PutReader(b.prefix + name, file, fi.Size(),
+		"application/octet-stream", s3_.Private, s3_.Options{})
+
+	return err
+}
+
 type Environment struct {
 	token  aws.Auth
 	region aws.Region
