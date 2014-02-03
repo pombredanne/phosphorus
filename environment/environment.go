@@ -21,7 +21,6 @@ type table struct {
 	name   string
 	key    string
 	table  *dynamodb.Table
-	// description *dynamodb.TableDescriptionT
 }
 
 func (t *table) Exists() (exists bool, err error) {
