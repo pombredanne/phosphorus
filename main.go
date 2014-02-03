@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"runtime"
 	"willstclair.com/phosphorus/config"
 )
 
@@ -46,6 +47,7 @@ var confPath string
 var confFrom string
 var noBanner bool
 var conf config.Configuration
+var maxprocs int
 
 const CONFIGENV = "PHOSPHORUS_CONFIG"
 
@@ -66,6 +68,9 @@ func usage() {
 func main() {
 	flag.Parse()
 	flag.Usage = usage
+
+	runtime.GOMAXPROCS(maxprocs)
+
 	log.SetFlags(0)
 
 	if err := findConfig(); err != nil {
@@ -119,6 +124,7 @@ func main() {
 func init() {
 	flag.StringVar(&confPath, "c", "", "configuration file")
 	flag.BoolVar(&noBanner, "nobanner", false, "do not show banner")
+	flag.IntVar(&maxprocs, "p", 2, "go MAXPROCS")
 }
 
 func findConfig() (err error) {
