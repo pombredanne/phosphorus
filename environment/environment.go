@@ -226,17 +226,33 @@ func (t *table) PutChannel() (c chan Item) {
 
 	go func() {
 		items := make([][]dynamodb.Attribute, 0, 25)
+
+		var wait sync.WaitGroup
+
+		// lame temporary fix
+		sem := make(chan int, 2)
+		for i := 0; i < 2; i++ {
+			sem <- 1
+		}
 		for item := range c {
 			items = append(items, item.ToAttributes(t.key))
 			if len(items) == 20 {
+				<-sem
+				wait.Add(1)
 				// log.Printf("%d items: %s\n", len(items), items)
-				err := t.BatchPut(items)
-				if err != nil {
-					panic(err)
-				}
+				it := items
+				go func() {
+					err := t.BatchPut(it)
+					if err != nil {
+						panic(err)
+					}
+					sem <- 1
+					wait.Done()
+				}()
 				items = make([][]dynamodb.Attribute, 0, 25)
 			}
 		}
+		wait.Wait()
 		err := t.BatchPut(items)
 		if err != nil {
 			panic(err)
