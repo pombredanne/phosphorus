@@ -1,8 +1,8 @@
 {
     "MaxProcs": 5,
     "AWSRegion": "us-east-1",
-    "AccessKeyId": "AKIAJOVET22FUD3OXPMQ",
-    "SecretAccessKey": "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",
+    "AccessKeyId": "",
+    "SecretAccessKey": "",
     "Source": {
 	"S3": {
 	    "Bucket": "willstclair-phosphorus",
