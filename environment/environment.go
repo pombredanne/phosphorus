@@ -4,18 +4,16 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/binary"
-	"io/ioutil"
-	"os"
-	"sync"
-	// "log"
 	"errors"
 	"fmt"
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/dynamodb"
 	s3_ "github.com/crowdmob/goamz/s3"
+	"io/ioutil"
+	"os"
+	"sync"
 	"time"
 	"willstclair.com/phosphorus/config"
-	// "log"
 )
 
 type table struct {
