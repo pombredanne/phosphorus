@@ -7,8 +7,8 @@ import (
 	"os"
 	"sort"
 	"sync"
-	"willstclair.com/phosphorus/vector"
 	"willstclair.com/phosphorus/environment"
+	"willstclair.com/phosphorus/vector"
 )
 
 type Signature [128]uint16
@@ -86,14 +86,14 @@ func (t *Template) Generate() {
 }
 
 type Index struct {
-	entries   [1 << 23][]uint32
-	threshold int
+	entries      [1 << 23][]uint32
+	threshold    int
 	writeChannel chan *environment.Item
 }
 
 func NewIndex(threshold int, writeChannel chan *environment.Item) (xr *Index) {
 	xr = &Index{
-		threshold: threshold,
+		threshold:    threshold,
 		writeChannel: writeChannel,
 	}
 

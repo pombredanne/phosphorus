@@ -1,20 +1,20 @@
 package environment
 
 import (
-	"os"
-	"io/ioutil"
-	"sync"
 	"bytes"
 	"encoding/base64"
 	"encoding/binary"
+	"io/ioutil"
+	"os"
+	"sync"
 	// "log"
+	"errors"
 	"fmt"
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/dynamodb"
 	s3_ "github.com/crowdmob/goamz/s3"
-	"willstclair.com/phosphorus/config"
-	"errors"
 	"time"
+	"willstclair.com/phosphorus/config"
 	// "log"
 )
 
@@ -174,7 +174,7 @@ type Item struct {
 }
 
 func (i *Item) ToAttributes(keyName string) (attrs []dynamodb.Attribute) {
-	attrs = make([]dynamodb.Attribute, len(i.Attributes) + 1)
+	attrs = make([]dynamodb.Attribute, len(i.Attributes)+1)
 	attrs[0] = *dynamodb.NewBinaryAttribute(keyName, i.Key.HashKey)
 	for i, attr := range i.Attributes {
 		attrs[i+1] = attr
@@ -184,7 +184,9 @@ func (i *Item) ToAttributes(keyName string) (attrs []dynamodb.Attribute) {
 
 func Dec64(e string) (i uint32) {
 	b, err := base64.StdEncoding.DecodeString(e)
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 	buf := bytes.NewBuffer(b)
 	binary.Read(buf, binary.BigEndian, &i)
 	return
@@ -208,7 +210,7 @@ func NewSetItem(key uint32, members []uint32) (item *Item) {
 	buf.Reset()
 
 	item = &Item{
-		dynamodb.Key{Enc64(key),""},
+		dynamodb.Key{Enc64(key), ""},
 		[]dynamodb.Attribute{
 			*dynamodb.NewBinarySetAttribute("i", encodedSet)}}
 
@@ -305,14 +307,14 @@ func tableD(tableName, keyName string) *dynamodb.TableDescriptionT {
 				AttributeName: keyName,
 				KeyType:       "HASH"}},
 		ProvisionedThroughput: dynamodb.ProvisionedThroughputT{
-			ReadCapacityUnits: int64(10),
+			ReadCapacityUnits:  int64(10),
 			WriteCapacityUnits: int64(10)},
 		TableName: tableName}
 }
 
 type bucket struct {
 	server *s3_.S3
-	name string
+	name   string
 	prefix string
 	bucket *s3_.Bucket
 }
@@ -355,10 +357,10 @@ type Environment struct {
 	dynamo *dynamodb.Server
 	s3     *s3_.S3
 
-	IndexTable *table
+	IndexTable  *table
 	SourceTable *table
 
-	IndexBucket *bucket
+	IndexBucket  *bucket
 	SourceBucket *bucket
 
 	TempDir string
@@ -370,7 +372,7 @@ func (e *Environment) Cleanup() error {
 
 func New(conf config.Configuration) (env *Environment, err error) {
 	// create a temporary directory
-	tempdir, err := ioutil.TempDir("","phosphorus")
+	tempdir, err := ioutil.TempDir("", "phosphorus")
 	if err != nil {
 		return
 	}
@@ -392,14 +394,14 @@ func New(conf config.Configuration) (env *Environment, err error) {
 		return
 	}
 
-	dynamo := &dynamodb.Server{token,region}
+	dynamo := &dynamodb.Server{token, region}
 	s3 := s3_.New(token, region)
 	env = &Environment{
-		region: region,
-		token: token,
-		dynamo: dynamo,
-		s3: s3,
-		IndexTable: &table{dynamo, conf.Index.Table.Name, "s", nil},
+		region:      region,
+		token:       token,
+		dynamo:      dynamo,
+		s3:          s3,
+		IndexTable:  &table{dynamo, conf.Index.Table.Name, "s", nil},
 		SourceTable: &table{dynamo, conf.Source.Table.Name, "r", nil},
 		IndexBucket: &bucket{s3,
 			conf.Index.S3.Bucket, conf.Index.S3.Prefix, nil},

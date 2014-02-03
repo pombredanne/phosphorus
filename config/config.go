@@ -2,8 +2,8 @@ package config
 
 import (
 	"encoding/json"
-	"io"
 	"fmt"
+	"io"
 	"strings"
 )
 
@@ -11,7 +11,7 @@ import (
 // way to clean it up, but leaving that for another time
 
 type Error struct {
-	init bool
+	init     bool
 	messages map[string]bool
 }
 
@@ -40,12 +40,12 @@ func (e *Error) Messages() (msgs []string) {
 }
 
 type Configuration struct {
-	MaxProcs int
-	AWSRegion string
-	AccessKeyId string
+	MaxProcs        int
+	AWSRegion       string
+	AccessKeyId     string
 	SecretAccessKey string
-	Source Source
-	Index Index
+	Source          Source
+	Index           Index
 }
 
 func (c *Configuration) Load(r io.Reader) (err error) {
@@ -105,12 +105,12 @@ func (c *Configuration) Validate() (err error) {
 }
 
 type Source struct {
-	S3 S3
-	Table DynamoTable
-	IdColumn int
+	S3           S3
+	Table        DynamoTable
+	IdColumn     int
 	SourceFields []SourceField
-	Delimiter string
-	nameSet map[string]bool
+	Delimiter    string
+	nameSet      map[string]bool
 	shortNameSet map[string]bool
 }
 
@@ -161,10 +161,10 @@ func (s *Source) Validate() (err error) {
 }
 
 type Index struct {
-	S3 S3
-	Table DynamoTable
+	S3          S3
+	Table       DynamoTable
 	IndexFields []IndexField
-	nameSet map[string]bool
+	nameSet     map[string]bool
 }
 
 func (i *Index) Validate() (err error) {
@@ -211,8 +211,8 @@ func (s *S3) Validate() (err error) {
 }
 
 type DynamoTable struct {
-	Name string
-	ReadCapacityUnits int
+	Name               string
+	ReadCapacityUnits  int
 	WriteCapacityUnits int
 }
 
@@ -238,8 +238,8 @@ func (t *DynamoTable) Validate() (err error) {
 }
 
 type SourceField struct {
-	Name string
-	Column int
+	Name      string
+	Column    int
 	ShortName string
 }
 

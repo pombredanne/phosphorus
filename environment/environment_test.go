@@ -1,21 +1,21 @@
 package environment
 
 import (
-	"fmt"
-	"testing"
-	"time"
 	"bytes"
-	"encoding/binary"
-	"encoding/base64"
-	"math"
-	"log"
-	"math/rand"
-	"math/big"
 	crand "crypto/rand"
+	"encoding/base64"
+	"encoding/binary"
+	"fmt"
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/dynamodb"
-	"github.com/crowdmob/goamz/s3/s3test"
 	s3_ "github.com/crowdmob/goamz/s3"
+	"github.com/crowdmob/goamz/s3/s3test"
+	"log"
+	"math"
+	"math/big"
+	"math/rand"
+	"testing"
+	"time"
 )
 
 var region aws.Region
@@ -34,13 +34,15 @@ func init() {
 	}
 
 	s3testserver, err := s3test.NewServer(&s3test.Config{})
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 
 	region = aws.Region{
-		Name: "test",
-		S3Endpoint: s3testserver.URL(),
+		Name:                 "test",
+		S3Endpoint:           s3testserver.URL(),
 		S3LocationConstraint: true,
-		DynamoDBEndpoint: "http://localhost:8000",
+		DynamoDBEndpoint:     "http://localhost:8000",
 	}
 
 	dynamo = &dynamodb.Server{token, region}
@@ -207,7 +209,7 @@ func TestPutChannel(t *testing.T) {
 	c := tbl.PutChannel()
 	for i := 0; i < 30; i++ {
 		k := dynamodb.Key{binKey(int64(i)), ""}
-		c <- Item{k,[]dynamodb.Attribute{
+		c <- Item{k, []dynamodb.Attribute{
 			*dynamodb.NewStringAttribute("test", "test")}}
 	}
 
@@ -230,9 +232,9 @@ func TestAddChannel(t *testing.T) {
 	k := dynamodb.Key{binKey(92825), ""}
 
 	c := tbl.AddChannel()
-	c <- Item{k,[]dynamodb.Attribute{
+	c <- Item{k, []dynamodb.Attribute{
 		*dynamodb.NewStringSetAttribute("colors", []string{"red"})}}
-	c <- Item{k,[]dynamodb.Attribute{
+	c <- Item{k, []dynamodb.Attribute{
 		*dynamodb.NewStringSetAttribute("colors", []string{"blue"})}}
 
 	close(c)
@@ -263,7 +265,9 @@ func TestBucketDoesNotExist(t *testing.T) {
 func TestBucketExists(t *testing.T) {
 	preExisting := s3server.Bucket("exists")
 	err := preExisting.PutBucket(s3_.Private)
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 
 	bkt := &bucket{s3server, "exists", "", nil}
 	exists, err := bkt.Exists()

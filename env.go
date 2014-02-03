@@ -2,23 +2,23 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"willstclair.com/phosphorus/environment"
-	"log"
 )
 
 const (
 	TPL_NOTABLE = "%s table: <does not exist>\n"
-	TPL_TABLE = "%s table:\n\tStatus: %s\n\tItems:  %d\n\tReadCapacityUnits: %d\n\tWriteCapacityUnits: %d\n\tSize: %d B\n\n"
+	TPL_TABLE   = "%s table:\n\tStatus: %s\n\tItems:  %d\n\tReadCapacityUnits: %d\n\tWriteCapacityUnits: %d\n\tSize: %d B\n\n"
 
 	TPL_NOBUCKET = "%s bucket: <does not exist>\n"
-	TPL_BUCKET = "%s bucket: exists\n"
+	TPL_BUCKET   = "%s bucket: exists\n"
 )
 
 var cmdEnv = &Command{
-	Run: runEnv,
+	Run:       runEnv,
 	UsageLine: "env",
-	Short: "print information about your environment",
+	Short:     "print information about your environment",
 }
 
 func runEnv(cmd *Command, args []string) {

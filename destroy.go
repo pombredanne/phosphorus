@@ -1,15 +1,15 @@
 package main
 
 import (
+	"log"
 	"os"
 	"willstclair.com/phosphorus/environment"
-	"log"
 )
 
 var cmdDestroy = &Command{
-	Run: runDestroy,
+	Run:       runDestroy,
 	UsageLine: "destroy",
-	Short: "destroy AWS resources",
+	Short:     "destroy AWS resources",
 }
 
 func runDestroy(cmd *Command, args []string) {

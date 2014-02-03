@@ -6,8 +6,8 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
-	"willstclair.com/phosphorus/vector"
 	"willstclair.com/phosphorus/environment"
+	"willstclair.com/phosphorus/vector"
 )
 
 func TestSignature(t *testing.T) {
@@ -180,7 +180,7 @@ func TestIndexAutoFlush(t *testing.T) {
 
 	// time.Sleep(500 * time.Millisecond) // gross
 
-	item := <- wc
+	item := <-wc
 	if len(item.Attributes[0].SetValues) != 2 {
 		t.Fail()
 	}
@@ -192,7 +192,7 @@ func TestRank(t *testing.T) {
 	go func() {
 		for i := 0; i < 4; i++ {
 			c <- 0xdeadbeef
-			if i % 2 == 0 {
+			if i%2 == 0 {
 				c <- 0xc0ffee
 			}
 		}

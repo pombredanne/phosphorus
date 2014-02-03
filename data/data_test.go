@@ -82,14 +82,16 @@ func TestFile(t *testing.T) {
 	ch := make(chan interface{})
 
 	f := File{
-		Path: "csv",
+		Path:    "csv",
 		Mappers: []Mapper{pie},
-		Stream: ch,
+		Stream:  ch,
 	}
 
 	go func() {
 		err := f.Load()
-		if err != nil { t.Error(err) }
+		if err != nil {
+			t.Error(err)
+		}
 	}()
 
 	expected := []string{"APPLE PIE", "APPLE PIE", " PIE", "ORANGE PIE"}

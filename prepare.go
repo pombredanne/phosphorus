@@ -1,15 +1,15 @@
 package main
 
 import (
-	"os"
 	"log"
+	"os"
 	"willstclair.com/phosphorus/environment"
 )
 
 var cmdPrepare = &Command{
-	Run: runPrepare,
+	Run:       runPrepare,
 	UsageLine: "prepare",
-	Short: "create AWS resources",
+	Short:     "create AWS resources",
 }
 
 func runPrepare(cmd *Command, args []string) {

@@ -1,19 +1,19 @@
 package main
 
 import (
+	"errors"
+	"flag"
+	"fmt"
+	"log"
+	"os"
 	"path/filepath"
 	"strings"
-	"errors"
-	"fmt"
-	"os"
-	"flag"
-	"log"
 	"willstclair.com/phosphorus/config"
 )
 
 const (
-	CONFIGFILE     = "config.json"
-	BANNER          = `
+	CONFIGFILE = "config.json"
+	BANNER     = `
                            )
                           ) \
       . . . . . . . . . ./ ) (. .
@@ -28,10 +28,10 @@ const (
 )
 
 type Command struct {
-	Run func(cmd *Command, args []string)
-	Flag flag.FlagSet
+	Run       func(cmd *Command, args []string)
+	Flag      flag.FlagSet
 	UsageLine string
-	Short string
+	Short     string
 }
 
 var commands = []*Command{
@@ -144,7 +144,6 @@ func findConfig() (err error) {
 		CONFIGENV))
 	return
 }
-
 
 func loadConfig() (err error) {
 	file, err := os.Open(confPath)

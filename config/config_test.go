@@ -23,13 +23,13 @@ func TestS3Validate(t *testing.T) {
 
 func sourceFixture() Source {
 	return Source{
-		S3: S3{"bucketname", "prefix/"},
-		Table: DynamoTable{"name", 10, 10},
+		S3:       S3{"bucketname", "prefix/"},
+		Table:    DynamoTable{"name", 10, 10},
 		IdColumn: 1,
 		SourceFields: []SourceField{
-			SourceField{"first",2,"f"},
-			SourceField{"last",3,"l"},
-			SourceField{"birthdate",4,"bd"}},
+			SourceField{"first", 2, "f"},
+			SourceField{"last", 3, "l"},
+			SourceField{"birthdate", 4, "bd"}},
 		Delimiter: ",",
 	}
 }
@@ -49,23 +49,31 @@ func TestDuplicateSourceFields(t *testing.T) {
 	s = sourceFixture()
 	s.SourceFields[1].Name = "first"
 	err = s.Validate()
-	if err == nil { t.Fail() }
+	if err == nil {
+		t.Fail()
+	}
 
 	s = sourceFixture()
 	s.SourceFields[1].Column = 2 // duplicate cols are OK
 	err = s.Validate()
-	if err != nil { t.Error(err) }
+	if err != nil {
+		t.Error(err)
+	}
 
 	s = sourceFixture()
 	s.SourceFields[1].ShortName = "f"
 	err = s.Validate()
-	if err == nil { t.Fail() }
+	if err == nil {
+		t.Fail()
+	}
 }
 
 func configFixture() (conf Configuration, err error) {
 	reader := bytes.NewBufferString(JSON)
 	err = conf.Load(reader)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 
 	return
 }
@@ -78,5 +86,7 @@ func TestInvalidIndexFields(t *testing.T) {
 	c.Index.IndexFields[0].Names[0] = "city"
 
 	err = c.Validate()
-	if err == nil { t.Fail() }
+	if err == nil {
+		t.Fail()
+	}
 }

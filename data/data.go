@@ -7,10 +7,10 @@ import (
 	"log"
 	"os"
 	// "path"
+	"github.com/crowdmob/goamz/dynamodb"
 	"path/filepath"
 	"strconv"
 	"sync"
-	"github.com/crowdmob/goamz/dynamodb"
 	"willstclair.com/phosphorus/environment"
 )
 
@@ -100,8 +100,7 @@ type Mapper func(interface{}) (interface{}, error)
 
 type File struct {
 	Mappers []Mapper
-	Stream chan interface{}
-
+	Stream  chan interface{}
 }
 
 func (f *File) Load(r io.Reader) (err error) {
@@ -132,8 +131,8 @@ outer:
 }
 
 type Attribute struct {
-	Column int
-	Name string
+	Column    int
+	Name      string
 	ShortName string
 }
 
@@ -163,7 +162,7 @@ func (r *Record) ToItem() (item *environment.Item) {
 	}
 
 	item = &environment.Item{
-		dynamodb.Key{environment.Enc64(r.RecordId),""},
+		dynamodb.Key{environment.Enc64(r.RecordId), ""},
 		attrs}
 	return
 }
