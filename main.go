@@ -96,6 +96,9 @@ func main() {
 	if !noBanner {
 		fmt.Fprintf(os.Stderr, BANNER)
 	}
+
+	configInfo()
+
 	for _, cmd := range commands {
 		if cmd.Name() == args[0] {
 			// cmd.Flag.Usage = func() { cmd.Usage() }
@@ -156,4 +159,16 @@ func loadConfig() (err error) {
 	}
 
 	return
+}
+
+func configInfo() {
+	log.Println("Configuration path: %s (from %s)\n\n", confPath, confFrom)
+}
+
+func msg(resource, disposition string) {
+	log.Printf("%s: %s\n", resource, disposition)
+}
+
+func errMsg(resource string, err error) {
+	log.Printf("%s: %s\n", resource, err)
 }

@@ -22,13 +22,14 @@ var cmdEnv = &Command{
 }
 
 func runEnv(cmd *Command, args []string) {
-	fmt.Fprintf(os.Stderr, "configuration path: %s (from %s)\n\n", confPath, confFrom)
-
 	env, err := environment.New(conf)
 	if err != nil {
 		log.Println(err)
 		os.Exit(2)
 	}
+	defer env.Cleanup()
+
+	log.Println("Environment info\n")
 
 	if exists, err := env.IndexTable.Exists(); err == nil && exists {
 		fmt.Fprintf(os.Stderr, "IndexTable: exists\n")

@@ -1,6 +1,7 @@
 package environment
 
 import (
+	"os"
 	"io/ioutil"
 	"sync"
 	"bytes"
@@ -361,6 +362,10 @@ type Environment struct {
 	SourceBucket *bucket
 
 	TempDir string
+}
+
+func (e *Environment) Cleanup() error {
+	return os.RemoveAll(e.TempDir)
 }
 
 func New(conf config.Configuration) (env *Environment, err error) {
