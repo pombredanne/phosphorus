@@ -117,9 +117,6 @@ func (xr *Index) Add(recordId uint32, s *Signature) {
 
 func (xr *Index) Flush(i int, realloc bool) {
 	if len(xr.entries[i]) > 0 {
-		if i % 100000 == 0 {
-			log.Printf("FLUSH %d\n", i)
-		}
 		if realloc {
 			ids := xr.entries[i]
 			xr.entries[i] = make([]uint32, 0, xr.threshold)
@@ -135,13 +132,31 @@ func (xr *Index) Flush(i int, realloc bool) {
 func (xr *Index) FlushAll() {
 	log.Println("Flushing all writes")
 
+	// count := 0
+	// for i, e := range xr.entries {
+	// 	if len(e) > 0 {
+	// 		if count % 10000 == 0 {
+	// 			log.Printf("FLUSH %d\n", count)
+	// 		}
+	// 		xr.Flush(i, false)
+	// 		count++
+	// 	}
+	// }
+
 	var wait sync.WaitGroup
 	for i := 0; i < 8; i++ {
 		i := i
 		wait.Add(1)
 		go func() {
+			count := 0
 			for j := i; j < (1<<23); j += 8 {
-				xr.Flush(j, false)
+				if len(xr.entries[j]) > 0 {
+					if count % 10000 == 0 {
+						log.Printf("FLUSH %d %d\n", i, count)
+					}
+					xr.Flush(j, false)
+					count++
+				}
 			}
 			wait.Done()
 		}()

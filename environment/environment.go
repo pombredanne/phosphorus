@@ -264,9 +264,9 @@ func (t *table) PutChannel() (c chan Item) {
 }
 
 func (t *table) AddChannel() (c chan *Item) {
-	c = make(chan *Item, 64)
+	c = make(chan *Item, 192)
 
-	for i := 0; i < 16; i++ {
+	for i := 0; i < 48; i++ {
 		go func() {
 			for item := range c {
 				for attempt := 0;; attempt++ {
@@ -276,7 +276,7 @@ func (t *table) AddChannel() (c chan *Item) {
 						case *dynamodb.Error:
 							if err.(*dynamodb.Error).Code == "ProvisionedThroughputExceededException" {
 								log.Println("Backing off. Increase IndexTable write throughput.")
-								time.Sleep((100 * (1 << uint(attempt))) * time.Millisecond)
+								time.Sleep((500 * (1 << uint(attempt))) * time.Millisecond)
 								continue
 							} else if err.(*dynamodb.Error).Code == "InternalServerError" {
 								log.Println("DynamoDB ISE. Retrying.")

@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"net/http"
 	"willstclair.com/phosphorus/data"
 	"willstclair.com/phosphorus/encoder"
 	"willstclair.com/phosphorus/environment"
@@ -23,6 +24,8 @@ var cmdIndex = &Command{
 }
 
 func runIndex(cmd *Command, args []string) {
+
+
 	env, err := environment.New(conf)
 	if err != nil {
 		log.Println(err)
@@ -172,6 +175,7 @@ var cmdIndexData = &Command{
 }
 
 func runIndexData(cmd *Command, args []string) {
+	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = 150
 	env, err := environment.New(conf)
 	if err != nil {
 		log.Println(err)
