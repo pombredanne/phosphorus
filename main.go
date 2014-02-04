@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -93,6 +94,8 @@ func main() {
 		}
 		os.Exit(1)
 	}
+
+	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = conf.MaxIdleConnsPerHost
 
 	args := flag.Args()
 	if len(args) < 1 {

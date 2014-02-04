@@ -44,6 +44,7 @@ type Configuration struct {
 	WriteChannelRoutines int
 	ConcurrentFlush int
 	ConcurrentFiles int
+	MaxIdleConnsPerHost int
 	AWSRegion       string
 	AccessKeyId     string
 	SecretAccessKey string
