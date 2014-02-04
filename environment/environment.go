@@ -343,6 +343,19 @@ func (t *table) MultiGet(keys []uint32, c chan uint32) {
 	return
 }
 
+func (t *table) Get(key uint32) (record map[string]string, err error) {
+	dk := &dynamodb.Key{Enc64(key),""}
+	result, err := t.table.GetItem(dk)
+	if err != nil {
+		return
+	}
+	record = make(map[string]string)
+	for _, v := range result {
+		record[v.Name] = v.Value
+	}
+	return
+}
+
 // generate a dynamodb table description
 func tableD(tableName, keyName string) *dynamodb.TableDescriptionT {
 	return &dynamodb.TableDescriptionT{

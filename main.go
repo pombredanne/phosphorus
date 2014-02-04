@@ -43,6 +43,7 @@ var commands = []*Command{
 	cmdSource,
 	cmdIndex,
 	cmdIndexData,
+	cmdServer,
 }
 
 var confPath string
