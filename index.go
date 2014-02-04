@@ -6,7 +6,7 @@ import (
 	"sync"
 	"encoding/csv"
 	"bytes"
-	// "runtime/pprof"
+	"math/rand"
 	"os"
 	"path"
 	"path/filepath"
@@ -66,38 +66,40 @@ func runIndex(cmd *Command, args []string) {
 
 
 	// limit the total number of simultaneous downloads
-	sem := make(chan int, 5)
-	for i := 0; i < 5; i++ {
+	sem := make(chan int, conf.ConcurrentFiles)
+	for i := 0; i < conf.ConcurrentFiles; i++ {
 		sem <- 1
 	}
 
 	ctr := &encoder.Counter{}
-	// count each record
-	// var wait sync.WaitGroup
+	var wait sync.WaitGroup
 	for rc := range c {
 		rc := rc
-		// <-sem
-		// wait.Add(1)
-		// go func() {
-		log.Println("starting...")
-		defer rc.Close()
-		r := csv.NewReader(rc)
-		for line, err := r.Read(); err != io.EOF; line, err = r.Read() {
-			if err != nil {
-				panic(err)
-			}
-			record := schema.Parse(line)
-			ctr.Count(flatten(indexSchema, record.Fields))
-		}
+		<-sem
+		wait.Add(1)
+		go func() {
+			log.Println("starting...")
+			defer func() {
+				rc.Close()
+				log.Println("done.")
+				sem <- 1
+				wait.Done()
+			}()
 
-		// wait.Done()
-		log.Println("done.")
-			// sem <- 1
-		// }()
+			r := csv.NewReader(rc)
+			for line, err := r.Read(); err != io.EOF; line, err = r.Read() {
+				if err != nil {
+					panic(err)
+				}
+				record := schema.Parse(line)
+				ctr.Count(flatten(indexSchema, record.Fields))
+			}
+
+		}()
 	}
 
 	log.Println("waiting")
-	// wait.Wait()
+	wait.Wait()
 
 	log.Println("creating encoder")
 	enc := encoder.NewEncoder(ctr)
@@ -216,8 +218,8 @@ func runIndexData(cmd *Command, args []string) {
 
 
 	// limit the total number of simultaneous downloads
-	sem := make(chan int, 5)
-	for i := 0; i < 5; i++ {
+	sem := make(chan int, conf.ConcurrentFiles)
+	for i := 0; i < conf.ConcurrentFiles; i++ {
 		sem <- 1
 	}
 
@@ -258,8 +260,10 @@ func runIndexData(cmd *Command, args []string) {
 	log.Println("Loaded hash template")
 
 	// get our flush channel
-	wc := env.IndexTable.AddChannel()
-	xr := index.NewIndex(64, wc)
+	wc := env.IndexTable.AddChannel(
+		conf.WriteChannelRoutines,
+		int(rand.Int31n(501) + 200))
+	xr := index.NewIndex(conf.Index.FlushThreshold, wc)
 
 	// initialize our stupid table (d'oh)
 	err = env.IndexTable.Load()
@@ -298,14 +302,7 @@ func runIndexData(cmd *Command, args []string) {
 	log.Println("waiting")
 	wait.Wait()
 	log.Println("flushing")
-	// file, err := os.Create("/home/ubuntu/phosphorus.prof")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// defer file.Close()
-	// pprof.StartCPUProfile(file)
-	xr.FlushAll()
+	xr.FlushAll(conf.FlushAllRoutines)
 	close(wc)
 	log.Println("goodbye")
-	// pprof.StopCPUProfile()
 }

@@ -41,6 +41,9 @@ func (e *Error) Messages() (msgs []string) {
 
 type Configuration struct {
 	MaxProcs        int
+	FlushAllRoutines int
+	WriteChannelRoutines int
+	ConcurrentFiles int
 	AWSRegion       string
 	AccessKeyId     string
 	SecretAccessKey string
@@ -165,6 +168,7 @@ type Index struct {
 	Table       DynamoTable
 	IndexFields []IndexField
 	nameSet     map[string]bool
+	FlushThreshold int
 }
 
 func (i *Index) Validate() (err error) {

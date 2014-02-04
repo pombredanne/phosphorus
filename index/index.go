@@ -129,7 +129,7 @@ func (xr *Index) Flush(i int, realloc bool) {
 	}
 }
 
-func (xr *Index) FlushAll() {
+func (xr *Index) FlushAll(concurrent int) {
 	log.Println("Flushing all writes")
 
 	// count := 0
@@ -144,12 +144,12 @@ func (xr *Index) FlushAll() {
 	// }
 
 	var wait sync.WaitGroup
-	for i := 0; i < 8; i++ {
+	for i := 0; i < concurrent; i++ {
 		i := i
 		wait.Add(1)
 		go func() {
 			count := 0
-			for j := i; j < (1<<23); j += 8 {
+			for j := i; j < (1<<23); j += concurrent {
 				if len(xr.entries[j]) > 0 {
 					if count % 10000 == 0 {
 						log.Printf("FLUSH %d %d\n", i, count)
