@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"errors"
+	"path/filepath"
 	"fmt"
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/dynamodb"
@@ -262,17 +263,34 @@ func (t *table) PutChannel() (c chan Item) {
 	return
 }
 
-func (t *table) AddChannel() (c chan Item) {
-	c = make(chan Item)
+func (t *table) AddChannel() (c chan *Item) {
+	c = make(chan *Item, 64)
 
-	go func() {
-		for item := range c {
-			_, err := t.table.AddAttributes(&item.Key, item.Attributes)
-			if err != nil {
-				panic(err)
+	for i := 0; i < 16; i++ {
+		go func() {
+			for item := range c {
+				for attempt := 0;; attempt++ {
+					_, err := t.table.AddAttributes(&item.Key, item.Attributes)
+					if err != nil {
+						switch err.(type) {
+						case *dynamodb.Error:
+							if err.(*dynamodb.Error).Code == "ProvisionedThroughputExceededException" {
+								log.Println("Backing off. Increase IndexTable write throughput.")
+								time.Sleep((100 * (1 << uint(attempt))) * time.Millisecond)
+								continue
+							} else if err.(*dynamodb.Error).Code == "InternalServerError" {
+								log.Println("DynamoDB ISE. Retrying.")
+								time.Sleep((100 * (1 << uint(attempt))) * time.Millisecond)
+								continue
+							}
+						}
+						panic(err)
+					}
+					break
+				}
 			}
-		}
-	}()
+		}()
+	}
 
 	return
 }
@@ -418,6 +436,80 @@ func (b *bucket) Put(path string, name string) error {
 		"application/octet-stream", s3_.Private, s3_.Options{})
 
 	return err
+}
+
+func (b *bucket) Get(name string, path string) error {
+	if b.bucket == nil {
+		b.bucket = b.server.Bucket(b.name)
+	}
+
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	r, err := b.bucket.Get(b.prefix + name)
+	if err != nil {
+		return err
+	}
+
+	_, err = file.Write(r)
+
+	return err
+}
+
+func (b *bucket) GetAll(prefix string, outdir string) error {
+	if b.bucket == nil {
+		b.bucket = b.server.Bucket(b.name)
+	}
+
+	listResp, err := b.bucket.List(b.prefix + prefix, "/", "", 1000)
+	if err != nil {
+		return err
+	}
+
+	// limit the total number of simultaneous downloads
+	sem := make(chan int, 5)
+	for i := 0; i < 5; i++ {
+		sem <- 1
+	}
+
+	var wait sync.WaitGroup
+
+	for _, k := range listResp.Contents {
+		k := k
+		<-sem
+		wait.Add(1)
+		go func() {
+			defer func() {
+				sem <- 1
+				wait.Done()
+			}()
+			outPath := filepath.Join(outdir, filepath.Base(k.Key))
+			log.Printf("writing %s\n", outPath)
+			file, err := os.Create(outPath)
+			if err != nil {
+				panic(err)
+			}
+			defer file.Close()
+
+			r, err := b.bucket.Get(k.Key)
+			if err != nil {
+				panic(err)
+			}
+
+			_, err = file.Write(r)
+			if err != nil {
+				panic(err)
+			}
+
+		}()
+	}
+
+	wait.Wait()
+
+	return nil
 }
 
 type Environment struct {

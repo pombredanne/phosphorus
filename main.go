@@ -41,6 +41,7 @@ var commands = []*Command{
 	cmdDestroy,
 	cmdSource,
 	cmdIndex,
+	cmdIndexData,
 }
 
 var confPath string
@@ -71,7 +72,7 @@ func main() {
 
 	runtime.GOMAXPROCS(maxprocs)
 
-	log.SetFlags(0)
+	// log.SetFlags(0)
 
 	if err := findConfig(); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n\n", err.Error())

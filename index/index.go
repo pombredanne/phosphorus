@@ -38,7 +38,7 @@ func (t *Template) Load() {
 	var wait sync.WaitGroup
 	for i, _ := range t.family {
 		i := i
-		filename := fmt.Sprintf("hash_%02x", i)
+		filename := filepath.Join(t.Directory, fmt.Sprintf("hash_%02x", i))
 		wait.Add(1)
 		go func() {
 			file, err := os.Open(filename)
@@ -110,26 +110,46 @@ func (xr *Index) Add(recordId uint32, s *Signature) {
 		i := int(v) | (si << 16)
 		xr.entries[i] = append(xr.entries[i], recordId)
 		if len(xr.entries[i]) >= xr.threshold {
-			xr.Flush(i)
+			xr.Flush(i, true)
 		}
 	}
 }
 
-func (xr *Index) Flush(i int) {
+func (xr *Index) Flush(i int, realloc bool) {
 	if len(xr.entries[i]) > 0 {
-		ids := xr.entries[i]
-		xr.entries[i] = make([]uint32, 0, xr.threshold)
-		xr.writeChannel <- environment.NewSetItem(uint32(i), ids)
+		if i % 100000 == 0 {
+			log.Printf("FLUSH %d\n", i)
+		}
+		if realloc {
+			ids := xr.entries[i]
+			xr.entries[i] = make([]uint32, 0, xr.threshold)
+			xr.writeChannel <- environment.NewSetItem(uint32(i), ids)
+		} else {
+			xr.writeChannel <- environment.NewSetItem(
+				uint32(i), xr.entries[i])
+		}
+
 	}
 }
 
 func (xr *Index) FlushAll() {
 	log.Println("Flushing all writes")
-	for i, e := range xr.entries {
-		if len(e) > 0 {
-			xr.Flush(i)
-		}
+
+	var wait sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		i := i
+		wait.Add(1)
+		go func() {
+			for j := i; j < (1<<23); j += 8 {
+				xr.Flush(j, false)
+			}
+			wait.Done()
+		}()
 	}
+
+	log.Println("waiting")
+	wait.Wait()
+	log.Println("flushed")
 }
 
 type Candidate struct {
