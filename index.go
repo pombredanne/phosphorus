@@ -24,8 +24,6 @@ var cmdIndex = &Command{
 }
 
 func runIndex(cmd *Command, args []string) {
-
-
 	env, err := environment.New(conf)
 	if err != nil {
 		log.Println(err)
@@ -263,7 +261,7 @@ func runIndexData(cmd *Command, args []string) {
 	wc := env.IndexTable.AddChannel(
 		conf.WriteChannelRoutines,
 		int(rand.Int31n(501) + 200))
-	xr := index.NewIndex(conf.Index.FlushThreshold, wc)
+	xr := index.NewIndex(conf.Index.FlushThreshold, wc, conf.ConcurrentFlush)
 
 	// initialize our stupid table (d'oh)
 	err = env.IndexTable.Load()
@@ -302,7 +300,7 @@ func runIndexData(cmd *Command, args []string) {
 	log.Println("waiting")
 	wait.Wait()
 	log.Println("flushing")
-	xr.FlushAll(conf.FlushAllRoutines)
+	xr.FlushAll()
 	close(wc)
 	log.Println("goodbye")
 }

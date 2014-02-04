@@ -41,8 +41,8 @@ func (e *Error) Messages() (msgs []string) {
 
 type Configuration struct {
 	MaxProcs        int
-	FlushAllRoutines int
 	WriteChannelRoutines int
+	ConcurrentFlush int
 	ConcurrentFiles int
 	AWSRegion       string
 	AccessKeyId     string

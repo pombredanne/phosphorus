@@ -90,16 +90,24 @@ type Index struct {
 	entries      [1 << 23][]uint32
 	threshold    int
 	writeChannel chan *environment.Item
+	sem          chan int
+	concurrent   int
 }
 
-func NewIndex(threshold int, writeChannel chan *environment.Item) (xr *Index) {
+func NewIndex(threshold int, writeChannel chan *environment.Item, concurrentFlush int) (xr *Index) {
 	xr = &Index{
 		threshold:    threshold,
 		writeChannel: writeChannel,
+		concurrent: concurrentFlush,
+		sem: make(chan int, concurrentFlush),
 	}
 
 	for i := 0; i < 1<<23; i++ {
 		xr.entries[i] = make([]uint32, 0, threshold)
+	}
+
+	for i := 0; i < concurrentFlush; i++ {
+		xr.sem <- 1
 	}
 
 	return
@@ -110,7 +118,11 @@ func (xr *Index) Add(recordId uint32, s *Signature) {
 		i := int(v) | (si << 16)
 		xr.entries[i] = append(xr.entries[i], recordId)
 		if len(xr.entries[i]) >= xr.threshold {
-			xr.Flush(i, true)
+			<-xr.sem
+			go func() {
+				xr.Flush(i, true)
+				xr.sem <- 1
+			}()
 		}
 	}
 }
@@ -129,27 +141,16 @@ func (xr *Index) Flush(i int, realloc bool) {
 	}
 }
 
-func (xr *Index) FlushAll(concurrent int) {
+func (xr *Index) FlushAll() {
 	log.Println("Flushing all writes")
 
-	// count := 0
-	// for i, e := range xr.entries {
-	// 	if len(e) > 0 {
-	// 		if count % 10000 == 0 {
-	// 			log.Printf("FLUSH %d\n", count)
-	// 		}
-	// 		xr.Flush(i, false)
-	// 		count++
-	// 	}
-	// }
-
 	var wait sync.WaitGroup
-	for i := 0; i < concurrent; i++ {
+	for i := 0; i < xr.concurrent; i++ {
 		i := i
 		wait.Add(1)
 		go func() {
 			count := 0
-			for j := i; j < (1<<23); j += concurrent {
+			for j := i; j < (1<<23); j += xr.concurrent {
 				if len(xr.entries[j]) > 0 {
 					if count % 10000 == 0 {
 						log.Printf("FLUSH %d %d\n", i, count)
