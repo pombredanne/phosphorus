@@ -87,13 +87,12 @@ func (c *TfIdfClassifier) Signature(term string, n int) (s []float64, err error)
 		multiplier := c.hashValue(i, termIndex)
 		s = append(s, termWeight*multiplier)
 	}
-	// log.Println(s)
 
 	return
 }
 
 func (c *TfIdfClassifier) Clean() {
-	if !c.dirty {
+	if !c.dirty && len(c.terms) > 0 {
 		return
 	}
 
@@ -142,5 +141,5 @@ func Uncompact(x uint16) float64 {
 }
 
 func init() {
-	gob.Register(TfIdfClassifier{})
+	gob.Register(&TfIdfClassifier{})
 }

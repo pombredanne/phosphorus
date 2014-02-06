@@ -5,7 +5,7 @@ import (
 )
 
 type Index interface {
-	Write(uint32, map[string]string) error
+	Write(*Record) error
 	Query(map[string]string) ([]Result, error)
 }
 
@@ -22,7 +22,7 @@ type Result struct {
 type MemoryIndex struct {
 	schema  *Schema
 	ids     [][][]uint32
-	records []map[string]string
+	records map[uint32]map[string]string
 }
 
 func (ix *MemoryIndex) put(i, j int, id uint32) {
@@ -36,17 +36,16 @@ func (ix *MemoryIndex) put(i, j int, id uint32) {
 
 	ix.ids[i][j] = append(ix.ids[i][j], id)
 }
-
-func (ix *MemoryIndex) Write(id uint32, record map[string]string) (err error) {
-	sigs, err := ix.schema.Sign(record)
+func (ix *MemoryIndex) Write(record *Record) (err error) {
+	sigs, err := ix.schema.Sign(record.Attrs)
 	if err != nil {
 		return
 	}
 
-	ix.records[id] = record
+	ix.records[record.Id] = record.Attrs
 
 	for i, sig := range sigs {
-		ix.put(i, int(sig), id)
+		ix.put(i, int(sig), record.Id)
 	}
 	return
 }
@@ -81,5 +80,7 @@ func (ix *MemoryIndex) Query(record map[string]string) (results []Result, err er
 }
 
 func NewMemoryIndex(s *Schema) Index {
-	return &MemoryIndex{schema: s}
+	i := &MemoryIndex{schema: s}
+	i.records = make(map[uint32]map[string]string)
+	return i
 }

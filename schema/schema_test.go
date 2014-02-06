@@ -75,8 +75,15 @@ func TestPersistSchema(t *testing.T) {
 	}
 
 	s2 := &Schema{}
-	s2.Load(buf)
-	sig2, _ := schema.Sign(appleDog)
+	err = s2.Load(buf)
+	if err != nil {
+		t.Error(err)
+	}
+
+	sig2, err := s2.Sign(appleDog)
+	if err != nil {
+		panic(err)
+	}
 
 	if !reflect.DeepEqual(sig1, sig2) {
 		t.Fail()

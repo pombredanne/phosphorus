@@ -101,6 +101,10 @@ func (s *Schema) LoadJSON(data []byte) (err error) {
 	return
 }
 
+func (s *Schema) Hyd() {
+	s.hydrate()
+}
+
 func (s *Schema) hydrate() {
 	for _, d := range s.Fields {
 		d.hydrate()
@@ -115,10 +119,23 @@ func (s *Schema) Learn(c chan map[string]string) {
 	}
 }
 
-func (s *Schema) Sign(record map[string]string) (signatures []uint32, err error) {
+func (s *Schema) LearnRecords(c chan *Record) {
+	for record := range c {
+		for _, d := range s.Fields {
+			d.Learn(record.Attrs)
+		}
+	}
+}
+
+func (s *Schema) Sign(record map[string]string) ([]uint32, error) {
 	var raw [][]float64
+	var signatures []uint32
+
 	for _, d := range s.Fields {
-		sig, _ := d.Signature(record, s.HashCount)
+		sig, err := d.Signature(record, s.HashCount)
+		if err != nil {
+			return nil, err
+		}
 		raw = append(raw, sig)
 	}
 
@@ -137,7 +154,7 @@ func (s *Schema) Sign(record map[string]string) (signatures []uint32, err error)
 
 		signatures = append(signatures, chunk)
 	}
-	return
+	return signatures, nil
 }
 
 func (s *Schema) Save(w io.Writer) (err error) {
@@ -149,5 +166,6 @@ func (s *Schema) Save(w io.Writer) (err error) {
 func (s *Schema) Load(r io.Reader) (err error) {
 	dec := gob.NewDecoder(r)
 	err = dec.Decode(s)
+	s.hydrate()
 	return
 }
