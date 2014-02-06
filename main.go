@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"runtime"
+	"strings"
 	"willstclair.com/phosphorus/config"
 )
 
@@ -44,6 +44,8 @@ var commands = []*Command{
 	cmdIndex,
 	cmdIndexData,
 	cmdServer,
+	cmdMem,
+	cmdMem2,
 }
 
 var confPath string
