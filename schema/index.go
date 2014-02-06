@@ -2,6 +2,7 @@ package schema
 
 import (
 	"sort"
+	"sync"
 )
 
 type Index interface {
@@ -20,12 +21,15 @@ type Result struct {
 }
 
 type MemoryIndex struct {
-	schema  *Schema
-	ids     [][][]uint32
-	records map[uint32]map[string]string
+	schema      *Schema
+	ids         [][][]uint32
+	idsLock     sync.RWMutex
+	records     map[uint32]map[string]string
+	recordsLock sync.RWMutex
 }
 
 func (ix *MemoryIndex) put(i, j int, id uint32) {
+	ix.idsLock.Lock()
 	for len(ix.ids) <= i {
 		ix.ids = append(ix.ids, [][]uint32{})
 	}
@@ -35,14 +39,18 @@ func (ix *MemoryIndex) put(i, j int, id uint32) {
 	}
 
 	ix.ids[i][j] = append(ix.ids[i][j], id)
+	ix.idsLock.Unlock()
 }
+
 func (ix *MemoryIndex) Write(record *Record) (err error) {
 	sigs, err := ix.schema.Sign(record.Attrs)
 	if err != nil {
 		return
 	}
 
+	ix.recordsLock.Lock()
 	ix.records[record.Id] = record.Attrs
+	ix.recordsLock.Unlock()
 
 	for i, sig := range sigs {
 		ix.put(i, int(sig), record.Id)
@@ -63,15 +71,20 @@ func (ix *MemoryIndex) Query(record map[string]string) (results []Result, err er
 	}
 
 	counter := make(map[uint32]int)
+	ix.idsLock.RLock()
 	for i, sig := range sigs {
 		for _, id := range ix.ids[i][int(sig)] {
 			counter[id]++
 		}
 	}
+	ix.idsLock.RUnlock()
 
 	for k, v := range counter {
+		ix.recordsLock.RLock()
+		attrs := ix.records[k]
+		ix.recordsLock.RUnlock()
 		results = append(results, Result{
-			&Record{k, ix.records[k]}, v})
+			&Record{k, attrs}, v})
 	}
 
 	sort.Sort(sort.Reverse(byMatches(results)))

@@ -9,6 +9,7 @@ import (
 	"math"
 	"math/rand"
 	"sort"
+	"sync"
 )
 
 type Classifier interface {
@@ -26,6 +27,7 @@ type TfIdfClassifier struct {
 	hash    int64
 	vector  [][]uint16
 	seed    []int64
+	lock    sync.RWMutex
 }
 
 func NewTfIdfClassifier() Classifier {
@@ -62,7 +64,8 @@ func (c *TfIdfClassifier) getGen(i int) *rand.Rand {
 	return c.gens[i]
 }
 
-func (c *TfIdfClassifier) hashValue(i, j int) float64 {
+func (c *TfIdfClassifier) hashValue(i, j int) (v float64) {
+	c.lock.Lock()
 	for len(c.vector) <= i {
 		c.vector = append(c.vector, []uint16{})
 	}
@@ -70,7 +73,13 @@ func (c *TfIdfClassifier) hashValue(i, j int) float64 {
 	for len(c.vector[i]) <= j {
 		c.vector[i] = append(c.vector[i], Compact(c.getGen(i).NormFloat64()))
 	}
-	return Uncompact(c.vector[i][j])
+	c.lock.Unlock()
+
+	c.lock.RLock()
+	v = Uncompact(c.vector[i][j])
+	c.lock.RUnlock()
+
+	return
 }
 
 func (c *TfIdfClassifier) Signature(term string, n int) (s []float64, err error) {
