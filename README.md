@@ -1,5 +1,30 @@
 # Phosphorus
 
+*N.B.: This is a to-do list.*
+
+## Install
+
+	go install willstclair.com/phosphorus
+
+## Usage
+
+	phosphorus command [arguments]
+
+## Commands
+
+
+	schema -schemadef 'schemadef.json' -source 'sourcedef.json' -o 'file.schema'
+
+Generates a new schema from the given schema definition.
+
+	index -index 'indexdef.json' -source 'sourcedef.json'
+
+Populates the index.
+
+	server -schema 'file.schema' -index 'indexdef.json'
+
+Runs the match server.
+
 ## Definition files
 
 ### Source definition
