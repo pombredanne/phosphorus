@@ -72,6 +72,10 @@ func createTable() string {
 }
 
 func TestTableDoesNotExist(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
 	tbl := &table{dynamo, "does-not-exist", "k", nil}
 	exists, err := tbl.Exists()
 	if err != nil {
@@ -83,6 +87,10 @@ func TestTableDoesNotExist(t *testing.T) {
 }
 
 func TestTableExists(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
 	name := createTable()
 	tbl := &table{dynamo, name, "k", nil}
 	exists, err := tbl.Exists()
@@ -95,6 +103,10 @@ func TestTableExists(t *testing.T) {
 }
 
 func TestCreateNewTable(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
 	name := randomString()
 	tbl := &table{dynamo, name, "k", nil}
 	err := tbl.Create()
@@ -112,6 +124,10 @@ func TestCreateNewTable(t *testing.T) {
 }
 
 func TestCreateExtantTable(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
 	name := createTable()
 	tbl := &table{dynamo, name, "k", nil}
 	err := tbl.Create()
@@ -121,6 +137,10 @@ func TestCreateExtantTable(t *testing.T) {
 }
 
 func TestDestroyTable(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
 	name := createTable()
 	tbl := &table{dynamo, name, "k", nil}
 
@@ -202,6 +222,9 @@ func TestBatchPut(t *testing.T) {
 }
 
 func TestPutChannel(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
 	name := createTable()
 	tbl := &table{dynamo, name, "k", nil}
 	tbl.Load()
@@ -214,27 +237,30 @@ func TestPutChannel(t *testing.T) {
 	}
 
 	close(c)
-
+	time.Sleep(1 * time.Second) // jank
 	for i := 0; i < 30; i++ {
 		k := dynamodb.Key{binKey(int64(i)), ""}
 		_, err := tbl.table.GetItem(&k)
 		if err != nil {
-			panic(err)
+			t.Error(err)
 		}
 	}
 }
 
 func TestAddChannel(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
 	name := createTable()
 	tbl := &table{dynamo, name, "k", nil}
 	tbl.Load()
 
 	k := dynamodb.Key{binKey(92825), ""}
 
-	c := tbl.AddChannel()
-	c <- Item{k, []dynamodb.Attribute{
+	c := tbl.AddChannel(1, 100)
+	c <- &Item{k, []dynamodb.Attribute{
 		*dynamodb.NewStringSetAttribute("colors", []string{"red"})}}
-	c <- Item{k, []dynamodb.Attribute{
+	c <- &Item{k, []dynamodb.Attribute{
 		*dynamodb.NewStringSetAttribute("colors", []string{"blue"})}}
 
 	close(c)
@@ -252,6 +278,9 @@ func TestAddChannel(t *testing.T) {
 }
 
 func TestBucketDoesNotExist(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
 	bkt := &bucket{s3server, "does-not-exist", "", nil}
 	exists, err := bkt.Exists()
 	if err != nil {
@@ -263,6 +292,9 @@ func TestBucketDoesNotExist(t *testing.T) {
 }
 
 func TestBucketExists(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
 	preExisting := s3server.Bucket("exists")
 	err := preExisting.PutBucket(s3_.Private)
 	if err != nil {
@@ -280,6 +312,9 @@ func TestBucketExists(t *testing.T) {
 }
 
 func TestCreateBucket(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
 	bkt := &bucket{s3server, "new-bucket", "", nil}
 	err := bkt.Create()
 	if err != nil {
@@ -297,6 +332,10 @@ func TestCreateBucket(t *testing.T) {
 }
 
 func TestDestroyBucket(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
 	bkt := &bucket{s3server, "new-bucket", "", nil}
 	err := bkt.Create()
 	if err != nil {

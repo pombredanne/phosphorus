@@ -92,6 +92,14 @@ type Schema struct {
 	Fields    []*Field `json:"fields"`
 }
 
+func (s *Schema) SignatureLen() int {
+	return s.HashCount / s.Width
+}
+
+func (s *Schema) ChunkBits() int {
+	return s.Width
+}
+
 func (s *Schema) LoadJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &s)
 	if err != nil {

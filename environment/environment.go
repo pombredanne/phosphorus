@@ -1,19 +1,19 @@
 package environment
 
 import (
-	"log"
 	"bytes"
 	"encoding/base64"
 	"encoding/binary"
 	"errors"
-	"path/filepath"
 	"fmt"
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/dynamodb"
 	s3_ "github.com/crowdmob/goamz/s3"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 	"willstclair.com/phosphorus/config"
@@ -264,17 +264,17 @@ func (t *table) PutChannel() (c chan Item) {
 }
 
 func (t *table) AddChannel(concurrent int, retryMs int) (c chan *Item) {
-	c = make(chan *Item, concurrent * 2)
+	c = make(chan *Item, concurrent*2)
 
 	for i := 0; i < concurrent; i++ {
 		go func() {
 			for item := range c {
-				for attempt := 0;; attempt++ {
+				for attempt := 0; ; attempt++ {
 					_, err := t.table.AddAttributes(&item.Key, item.Attributes)
 					if err != nil {
 						switch err.(type) {
 						case *dynamodb.Error:
-							retry := time.Duration(retryMs * (1 << uint(attempt))) * time.Millisecond
+							retry := time.Duration(retryMs*(1<<uint(attempt))) * time.Millisecond
 							if err.(*dynamodb.Error).Code == "ProvisionedThroughputExceededException" {
 								log.Println("Backing off. Increase IndexTable write throughput.")
 								time.Sleep(retry)
@@ -344,7 +344,7 @@ func (t *table) MultiGet(keys []uint32, c chan uint32) {
 }
 
 func (t *table) Get(key uint32) (record map[string]string, err error) {
-	dk := &dynamodb.Key{Enc64(key),""}
+	dk := &dynamodb.Key{Enc64(key), ""}
 	result, err := t.table.GetItem(dk)
 	if err != nil {
 		return
@@ -446,7 +446,7 @@ func (b *bucket) Put(path string, name string) error {
 	}
 	defer file.Close()
 
-	err = b.bucket.PutReader(b.prefix + name, file, fi.Size(),
+	err = b.bucket.PutReader(b.prefix+name, file, fi.Size(),
 		"application/octet-stream", s3_.Private, s3_.Options{})
 
 	return err
@@ -478,7 +478,7 @@ func (b *bucket) GetAll(prefix string, outdir string) error {
 		b.bucket = b.server.Bucket(b.name)
 	}
 
-	listResp, err := b.bucket.List(b.prefix + prefix, "/", "", 1000)
+	listResp, err := b.bucket.List(b.prefix+prefix, "/", "", 1000)
 	if err != nil {
 		return err
 	}

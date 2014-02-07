@@ -5,9 +5,16 @@ import (
 	"sync"
 )
 
+type Signer interface {
+	Sign(map[string]string) ([]uint32, error)
+	SignatureLen() int
+	ChunkBits() int
+}
+
 type Index interface {
 	Write(*Record) error
 	Query(map[string]string) ([]Result, error)
+	Flush() error
 }
 
 type Record struct {
@@ -21,7 +28,7 @@ type Result struct {
 }
 
 type MemoryIndex struct {
-	schema      *Schema
+	signer      Signer
 	ids         [][][]uint32
 	idsLock     sync.RWMutex
 	records     map[uint32]map[string]string
@@ -43,7 +50,7 @@ func (ix *MemoryIndex) put(i, j int, id uint32) {
 }
 
 func (ix *MemoryIndex) Write(record *Record) (err error) {
-	sigs, err := ix.schema.Sign(record.Attrs)
+	sigs, err := ix.signer.Sign(record.Attrs)
 	if err != nil {
 		return
 	}
@@ -58,14 +65,18 @@ func (ix *MemoryIndex) Write(record *Record) (err error) {
 	return
 }
 
-type byMatches []Result
+func (ix *MemoryIndex) Flush() error {
+	return nil
+}
 
-func (c byMatches) Len() int           { return len(c) }
-func (c byMatches) Less(i, j int) bool { return c[i].Matches < c[j].Matches }
-func (c byMatches) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
+type ByMatches []Result
+
+func (c ByMatches) Len() int           { return len(c) }
+func (c ByMatches) Less(i, j int) bool { return c[i].Matches < c[j].Matches }
+func (c ByMatches) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
 
 func (ix *MemoryIndex) Query(record map[string]string) (results []Result, err error) {
-	sigs, err := ix.schema.Sign(record)
+	sigs, err := ix.signer.Sign(record)
 	if err != nil {
 		return
 	}
@@ -87,13 +98,19 @@ func (ix *MemoryIndex) Query(record map[string]string) (results []Result, err er
 			&Record{k, attrs}, v})
 	}
 
-	sort.Sort(sort.Reverse(byMatches(results)))
+	sort.Sort(sort.Reverse(ByMatches(results)))
 
 	return
 }
 
-func NewMemoryIndex(s *Schema) Index {
-	i := &MemoryIndex{schema: s}
-	i.records = make(map[uint32]map[string]string)
-	return i
+func NewMemoryIndex(s Signer) Index {
+	ix := &MemoryIndex{signer: s}
+	ix.records = make(map[uint32]map[string]string)
+
+	ix.ids = make([][][]uint32, s.SignatureLen())
+	for i, _ := range ix.ids {
+		ix.ids[i] = make([][]uint32, 1<<uint(s.ChunkBits()))
+	}
+
+	return ix
 }
