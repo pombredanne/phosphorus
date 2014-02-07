@@ -1,0 +1,61 @@
+{
+  "hash_count": 2048,
+  "chunk_size": 16,
+  "fields": [
+    {
+      "comment": "first name",
+      "attrs": [
+        "first_name"
+      ],
+      "transforms": [
+
+      ]
+    },
+    {
+      "comment": "last name",
+      "attrs": [
+        "last_name"
+      ],
+      "transforms": [
+
+      ]
+    },
+    {
+      "comment": "mi",
+      "attrs": [
+        "middle_initial"
+      ],
+      "transforms": [
+
+      ]
+    },
+    {
+      "comment": "bd",
+      "attrs": [
+        "birth_month",
+        "birth_day"
+      ],
+      "transforms": [
+
+      ]
+    },
+    {
+      "comment": "by",
+      "attrs": [
+        "birth_year"
+      ],
+      "transforms": [
+
+      ]
+    },
+    {
+      "comment": "city",
+      "attrs": [
+        "city"
+      ],
+      "transforms": [
+
+      ]
+    }
+  ]
+}
