@@ -31,12 +31,6 @@ func init() {
 }
 
 func runSchema(cmd *Command, args []string) {
-	log.Println("hello")
-	log.Println("SSD ", schemaSchemaDef)
-	log.Println("SSrcD ", schemaSourceDef)
-	log.Println("In ", schemaIn)
-	log.Println("Out ", schemaOut)
-
 	s := &schema.Schema{}
 	sDef, err := ioutil.ReadFile(schemaSchemaDef)
 	if err != nil {

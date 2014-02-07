@@ -15,6 +15,7 @@ import (
 type Classifier interface {
 	Learn(string)
 	Signature(string, int) ([]float64, error)
+	Dimension() int
 }
 
 type TfIdfClassifier struct {
@@ -31,8 +32,14 @@ type TfIdfClassifier struct {
 }
 
 func NewTfIdfClassifier() Classifier {
-	return &TfIdfClassifier{
+	c := &TfIdfClassifier{
 		Counts: make(map[string]int)}
+
+	return c
+}
+
+func (c *TfIdfClassifier) Dimension() int {
+	return len(c.Counts)
 }
 
 func (c *TfIdfClassifier) Learn(term string) {
@@ -104,11 +111,6 @@ func (c *TfIdfClassifier) Clean() {
 	if !c.dirty && len(c.terms) > 0 {
 		return
 	}
-
-	counts := c.Counts
-
-	*c = TfIdfClassifier{
-		Counts: counts}
 
 	c.terms = make([]string, 0, len(c.Counts))
 	c.total = 0
