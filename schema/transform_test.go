@@ -2,6 +2,7 @@ package schema
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 )
 
@@ -17,7 +18,7 @@ func TestTransform(t *testing.T) {
 		t.Error(err)
 	}
 
-	if xf("apple") != "app" {
+	if xf([]string{"apple"})[0] != "app" {
 		t.Fail()
 	}
 }
@@ -58,7 +59,41 @@ func TestTransformDeserialize(t *testing.T) {
 
 	ti.hydrate()
 
-	if ti.Fn("apple") != "app" {
+	if ti.Fn([]string{"apple"})[0] != "app" {
 		t.Fail()
 	}
 }
+
+type _c struct {
+	input    string
+	expected []string
+}
+
+var testNames = []_c{
+	_c{"ST CLAIR", []string{"ST CLAIR"}},
+	_c{"ST CLAIR-JONES", []string{"ST CLAIR", "JONES"}},
+	_c{"DEL RAY", []string{"DEL RAY"}},
+	_c{"DUFF HESTER", []string{"DUFF", "HESTER"}},
+	_c{"ROSADO DE GRACIA", []string{"ROSADO", "DE GRACIA"}},
+	_c{"CONNOLLY-MC LEISH", []string{"CONNOLLY", "MC LEISH"}},
+	_c{"DU BRUCQ", []string{"DU BRUCQ"}},
+	_c{"VAN NUYS- CRUZ", []string{"VAN NUYS", "CRUZ"}},
+	_c{"OSBORNE - BARTON", []string{"OSBORNE", "BARTON"}},
+	_c{"SAINT VIL-COACHY", []string{"SAINT VIL", "COACHY"}},
+	_c{"SIMO D' OLEO", []string{"SIMO", "D' OLEO"}},
+	_c{"DE LA RENTA", []string{"DE LA RENTA"}},
+	_c{"DEL-PILAR", []string{"DEL PILAR"}},
+	// _c{"", []string{"", ""}},
+}
+
+func TestSplitNames(t *testing.T) {
+	for _, pair := range testNames {
+		actual := normalizeNames(pair.input)
+		if !reflect.DeepEqual(actual, pair.expected) {
+			t.Fail()
+			t.Logf("%s != %s", actual, pair.expected)
+		}
+	}
+}
+
+// ugh todo another time: strip JR, SR, III, etc etc

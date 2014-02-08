@@ -8,7 +8,9 @@
         "first_name"
       ],
       "transforms": [
-
+	  {
+	      "function": "split"
+	  }
       ]
     },
     {
@@ -17,7 +19,9 @@
         "last_name"
       ],
       "transforms": [
-
+	  {
+	      "function": "split"
+	  }
       ]
     },
     {
@@ -54,7 +58,15 @@
         "city"
       ],
       "transforms": [
-
+	  {
+	      "function": "killafter",
+	      "arguments": {
+		  "sep": "/"
+	      }
+	  },
+	  {
+	      "function": "trim"
+	  }
       ]
     }
   ]

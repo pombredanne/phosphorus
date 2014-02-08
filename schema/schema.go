@@ -8,7 +8,7 @@ import (
 	"io"
 )
 
-type TransformF func(string) string
+type TransformF func([]string) []string
 
 type Transform struct {
 	Name        string
@@ -61,15 +61,15 @@ func (d *Field) Load(data []byte) (err error) {
 	return
 }
 
-func (d *Field) xform(term string) (out string) {
-	out = term
+func (d *Field) xform(term string) (out []string) {
+	out = []string{term}
 	for _, t := range d.Transforms {
 		out = t.Fn(out)
 	}
 	return
 }
 
-func (d *Field) pick(record map[string]string) string {
+func (d *Field) pick(record map[string]string) []string {
 	var buf bytes.Buffer
 	for _, attr := range d.Attrs {
 		buf.WriteString(record[attr])
@@ -78,12 +78,24 @@ func (d *Field) pick(record map[string]string) string {
 }
 
 func (d *Field) Learn(record map[string]string) {
-	d.Classifier.Learn(d.pick(record))
+	for _, t := range d.pick(record) {
+		d.Classifier.Learn(t)
+	}
 }
 
 func (d *Field) Signature(record map[string]string, n int) (s []float64, err error) {
-	s, err = d.Classifier.Signature(d.pick(record), n)
-	return
+	sig := make([]float64, n)
+	for _, t := range d.pick(record) {
+		s, err = d.Classifier.Signature(t, n)
+		if err != nil {
+			return sig, err
+		}
+		for i, v := range s {
+			sig[i] += v
+		}
+	}
+
+	return sig, nil
 }
 
 type Schema struct {
