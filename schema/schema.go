@@ -8,6 +8,11 @@ import (
 	"io"
 )
 
+type RandomProvider interface {
+	Get(int) float64
+	Advance(int) error
+}
+
 type TransformF func([]string) []string
 
 type Transform struct {
@@ -83,7 +88,7 @@ func (d *Field) Learn(record map[string]string) {
 	}
 }
 
-func (d *Field) Signature(record map[string]string, n int) (s []float64, err error) {
+func (d *Field) Signature(record map[string]string, n int, o Offset) (s []float64, err error) {
 	sig := make([]float64, n)
 	for _, t := range d.pick(record) {
 		s, err = d.Classifier.Signature(t, n)
@@ -147,12 +152,23 @@ func (s *Schema) LearnRecords(c chan *Record) {
 	}
 }
 
+type Offset int
+
+func (o Offset) Get(i int) int {
+	return int(o) + i
+}
+
+func (o Offset) Advance(i int) {
+	o += Offset(i)
+}
+
 func (s *Schema) Sign(record map[string]string) ([]uint32, error) {
 	var raw [][]float64
 	var signatures []uint32
 
+	var o Offset
 	for _, d := range s.Fields {
-		sig, err := d.Signature(record, s.HashCount)
+		sig, err := d.Signature(record, s.HashCount, o)
 		if err != nil {
 			return nil, err
 		}

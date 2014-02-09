@@ -16,15 +16,19 @@ var cmdIndex = &Command{
 }
 
 var (
-	indexSchema    string // -schema flag
-	indexSourceDef string // -sourcedef flag
-	indexIn        string // -in flag
+	indexSchema      string // -schema flag
+	indexSourceDef   string // -sourcedef flag
+	indexIn          string // -in flag
+	indexSourceTable string
+	indexIndexTable  string
 )
 
 func init() {
 	cmdIndex.Flag.StringVar(&indexSchema, "schema", "", "")
 	cmdIndex.Flag.StringVar(&indexSourceDef, "sourcedef", "", "")
 	cmdIndex.Flag.StringVar(&indexIn, "in", "", "")
+	cmdIndex.Flag.StringVar(&indexSourceTable, "sourcetable", "", "")
+	cmdIndex.Flag.StringVar(&indexIndexTable, "indextable", "", "")
 }
 
 func runIndex(cmd *Command, args []string) {

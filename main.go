@@ -36,6 +36,7 @@ type Command struct {
 var commands = []*Command{
 	cmdSchema,
 	cmdIndex,
+	cmdHash,
 }
 
 var noBanner bool
