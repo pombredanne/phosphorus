@@ -9,8 +9,7 @@ import (
 )
 
 type RandomProvider interface {
-	Get(int) float64
-	Advance(int) error
+	Get(int64) float64
 }
 
 type TransformF func([]string) []string
@@ -88,10 +87,10 @@ func (d *Field) Learn(record map[string]string) {
 	}
 }
 
-func (d *Field) Signature(record map[string]string, n int, o Offset) (s []float64, err error) {
+func (d *Field) Signature(record map[string]string, n int, r RandomProvider, offset int64) (s []float64, err error) {
 	sig := make([]float64, n)
 	for _, t := range d.pick(record) {
-		s, err = d.Classifier.Signature(t, n)
+		s, err = d.Classifier.Signature(t, n, r, offset)
 		if err != nil {
 			return sig, err
 		}
@@ -99,7 +98,6 @@ func (d *Field) Signature(record map[string]string, n int, o Offset) (s []float6
 			sig[i] += v
 		}
 	}
-
 	return sig, nil
 }
 
@@ -152,27 +150,18 @@ func (s *Schema) LearnRecords(c chan *Record) {
 	}
 }
 
-type Offset int
-
-func (o Offset) Get(i int) int {
-	return int(o) + i
-}
-
-func (o Offset) Advance(i int) {
-	o += Offset(i)
-}
-
-func (s *Schema) Sign(record map[string]string) ([]uint32, error) {
+func (s *Schema) Sign(record map[string]string, r RandomProvider) ([]uint32, error) {
 	var raw [][]float64
 	var signatures []uint32
 
-	var o Offset
+	o := int64(0)
 	for _, d := range s.Fields {
-		sig, err := d.Signature(record, s.HashCount, o)
+		sig, err := d.Signature(record, s.HashCount, r, o)
 		if err != nil {
 			return nil, err
 		}
 		raw = append(raw, sig)
+		o += int64(d.Classifier.Dimension() * s.HashCount)
 	}
 
 	chunks := s.HashCount / s.Width

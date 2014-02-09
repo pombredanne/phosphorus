@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"sync"
+	"willstclair.com/phosphorus/random"
 	"willstclair.com/phosphorus/schema"
 )
 
@@ -16,6 +17,7 @@ var cmdIndex = &Command{
 }
 
 var (
+	indexDir         string
 	indexSchema      string // -schema flag
 	indexSourceDef   string // -sourcedef flag
 	indexIn          string // -in flag
@@ -24,6 +26,7 @@ var (
 )
 
 func init() {
+	cmdIndex.Flag.StringVar(&indexDir, "dir", "", "")
 	cmdIndex.Flag.StringVar(&indexSchema, "schema", "", "")
 	cmdIndex.Flag.StringVar(&indexSourceDef, "sourcedef", "", "")
 	cmdIndex.Flag.StringVar(&indexIn, "in", "", "")
@@ -33,6 +36,13 @@ func init() {
 
 func runIndex(cmd *Command, args []string) {
 	log.Println("hello")
+
+	rs := random.NewRandomStore(indexDir)
+	for i := 0; i < 4096; i++ {
+		log.Println(rs.Get(int64(i)))
+	}
+	os.Exit(1)
+
 	s := &schema.Schema{}
 	file, err := os.Open(indexSchema)
 	if err != nil {

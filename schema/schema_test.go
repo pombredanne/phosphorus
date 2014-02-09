@@ -66,7 +66,7 @@ func TestPersistSchema(t *testing.T) {
 	close(c)
 
 	schema.Learn(c)
-	sig1, _ := schema.Sign(appleDog)
+	sig1, _ := schema.Sign(appleDog, &_rs{})
 
 	buf := &bytes.Buffer{}
 	err := schema.Save(buf)
@@ -80,7 +80,7 @@ func TestPersistSchema(t *testing.T) {
 		t.Error(err)
 	}
 
-	sig2, err := s2.Sign(appleDog)
+	sig2, err := s2.Sign(appleDog, &_rs{})
 	if err != nil {
 		panic(err)
 	}
@@ -88,4 +88,10 @@ func TestPersistSchema(t *testing.T) {
 	if !reflect.DeepEqual(sig1, sig2) {
 		t.Fail()
 	}
+}
+
+type _rs struct{}
+
+func (rs *_rs) Get(i int64) float64 {
+	return 0.0
 }
