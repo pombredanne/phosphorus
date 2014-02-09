@@ -88,7 +88,7 @@ func (f *FileSource) GetChannel() (c chan *Record, err error) {
 	for i := 0; i < f.Concurrent; i++ {
 		f.sem <- 1
 	}
-	f.c = make(chan *Record)
+	f.c = make(chan *Record, 2048)
 
 	go f.fill()
 	c = f.c

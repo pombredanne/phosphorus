@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"github.com/crowdmob/goamz/dynamodb"
+	"log"
 	"math"
 	"sort"
 	"sync"
@@ -29,10 +30,10 @@ func NewDynamoDBIndex(s schema.Signer, indexT *dynamodb.Table, sourceT *dynamodb
 	ix := &DynamoDBIndex{
 		indexT:    indexT,
 		sourceT:   sourceT,
-		indexM:    NewWriteSem(100),
-		sourceM:   NewWriteSem(100),
+		indexM:    NewWriteSem(5000),
+		sourceM:   NewWriteSem(1000),
 		signer:    s,
-		threshold: 10}
+		threshold: 64}
 
 	numChunks := s.SignatureLen()
 	sigValues := 1 << uint(s.ChunkBits())
@@ -142,8 +143,8 @@ func (ix *DynamoDBIndex) insertRecord(id uint32, attrs map[string]string) error 
 	return nil
 }
 
-func (ix *DynamoDBIndex) Write(record *schema.Record) error {
-	sigs, err := ix.signer.Sign(record.Attrs)
+func (ix *DynamoDBIndex) Write(record *schema.Record, r schema.RandomProvider) error {
+	sigs, err := ix.signer.Sign(record.Attrs, r)
 	if err != nil {
 		return err
 	}
@@ -245,8 +246,8 @@ func (ix *DynamoDBIndex) batchGetRecords(ids []uint32) ([]*schema.Record, error)
 	return records, nil
 }
 
-func (ix *DynamoDBIndex) Query(attrs map[string]string) (results []schema.Result, err error) {
-	sigs, err := ix.signer.Sign(attrs)
+func (ix *DynamoDBIndex) Query(attrs map[string]string, r schema.RandomProvider) (results []schema.Result, err error) {
+	sigs, err := ix.signer.Sign(attrs, r)
 	if err != nil {
 		return
 	}
@@ -343,8 +344,8 @@ func (ws *WriteSem) trickle() {
 		ws.failsLock.Lock()
 
 		if ws.fails > 0 {
-			ws.fill -= ws.fails
-		} else {
+			ws.fill -= (ws.fails / 2)
+		} else if ws.bucket == 0 {
 			f := float64(ws.fill) * 1.1
 			ws.fill = int(math.Ceil(f))
 		}
@@ -353,6 +354,7 @@ func (ws *WriteSem) trickle() {
 		ws.bucketCond.Broadcast()
 		ws.failsLock.Unlock()
 		ws.bucketLock.Unlock()
+		log.Println("New fill: ", ws.fill)
 		time.Sleep(REPLENISH_INTERVAL * time.Millisecond)
 	}
 }

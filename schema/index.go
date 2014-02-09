@@ -6,14 +6,14 @@ import (
 )
 
 type Signer interface {
-	Sign(map[string]string) ([]uint32, error)
+	Sign(map[string]string, RandomProvider) ([]uint32, error)
 	SignatureLen() int
 	ChunkBits() int
 }
 
 type Index interface {
-	Write(*Record) error
-	Query(map[string]string) ([]Result, error)
+	Write(*Record, RandomProvider) error
+	Query(map[string]string, RandomProvider) ([]Result, error)
 	Flush() error
 }
 
@@ -49,8 +49,8 @@ func (ix *MemoryIndex) put(i, j int, id uint32) {
 	ix.idsLock.Unlock()
 }
 
-func (ix *MemoryIndex) Write(record *Record) (err error) {
-	sigs, err := ix.signer.Sign(record.Attrs)
+func (ix *MemoryIndex) Write(record *Record, r RandomProvider) (err error) {
+	sigs, err := ix.signer.Sign(record.Attrs, r)
 	if err != nil {
 		return
 	}
@@ -75,8 +75,8 @@ func (c ByMatches) Len() int           { return len(c) }
 func (c ByMatches) Less(i, j int) bool { return c[i].Matches < c[j].Matches }
 func (c ByMatches) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
 
-func (ix *MemoryIndex) Query(record map[string]string) (results []Result, err error) {
-	sigs, err := ix.signer.Sign(record)
+func (ix *MemoryIndex) Query(record map[string]string, r RandomProvider) (results []Result, err error) {
+	sigs, err := ix.signer.Sign(record, r)
 	if err != nil {
 		return
 	}
