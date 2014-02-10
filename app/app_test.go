@@ -1,53 +1,173 @@
 package app
 
 import (
+	crand "crypto/rand"
+	"fmt"
+	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/dynamodb"
+	"math"
+	"math/big"
+	"math/rand"
+	"reflect"
 	"testing"
+	"time"
 )
 
-func TestDicks(t *testing.T) {
-	j := &Job{
-		IndexId:  900,
-		Id:       5028,
-		Type:     "cat",
-		Argument: "no thx",
-		State:    JOB_LOCK,
+type _test struct {
+	ParentId int64    `dynamodb:"_hash"`
+	Id       int64    `dynamodb:"_range"`
+	Animal   string   `dynamodb:"animal"`
+	I        int      `dynamodb:"i"`
+	I8       int8     `dynamodb:"i8"`
+	I16      int16    `dynamodb:"i16"`
+	I32      int32    `dynamodb:"i32"`
+	I64      int64    `dynamodb:"i64"`
+	U        uint     `dynamodb:"u"`
+	U8       uint8    `dynamodb:"u8"`
+	U16      uint16   `dynamodb:"u16"`
+	U32      uint32   `dynamodb:"u32"`
+	U64      uint64   `dynamodb:"u64"`
+	IS       []int16  `dynamodb:"is16"`
+	US       []uint16 `dynamodb:"us16"`
+	SS       []string `dynamodb:"ss"`
+}
+
+var dynamo *dynamodb.Server
+var region aws.Region
+var token *aws.Auth
+
+// seed the RNG with an actually random value
+func seedRandom() {
+	seed, err := crand.Int(crand.Reader, big.NewInt(math.MaxInt64))
+	if err != nil {
+		panic(err)
+	}
+	rand.Seed(seed.Int64())
+}
+
+func init() {
+	seedRandom()
+	now := time.Now()
+	expires := now.Add(time.Duration(60) * time.Minute)
+
+	token, err := aws.GetAuth(randomString(), "secret", "", expires)
+	if err != nil {
+		panic(err)
 	}
 
-	k, attrs := dynamo(j)
+	region = aws.Region{
+		Name:             "test",
+		DynamoDBEndpoint: "http://localhost:8000",
+	}
 
-	if k.HashKey != "900" {
-		t.Fail()
+	dynamo = &dynamodb.Server{token, region}
+}
+
+// generate a dynamodb table description
+func tableD(tableName string) *dynamodb.TableDescriptionT {
+	return &dynamodb.TableDescriptionT{
+		AttributeDefinitions: []dynamodb.AttributeDefinitionT{
+			dynamodb.AttributeDefinitionT{
+				Name: "myhash",
+				Type: dynamodb.TYPE_NUMBER},
+			dynamodb.AttributeDefinitionT{
+				Name: "myrange",
+				Type: dynamodb.TYPE_NUMBER}},
+		KeySchema: []dynamodb.KeySchemaT{
+			dynamodb.KeySchemaT{
+				AttributeName: "myhash",
+				KeyType:       "HASH"},
+			dynamodb.KeySchemaT{
+				AttributeName: "myrange",
+				KeyType:       "RANGE"}},
+		ProvisionedThroughput: dynamodb.ProvisionedThroughputT{
+			ReadCapacityUnits:  int64(10),
+			WriteCapacityUnits: int64(10)},
+		TableName: tableName}
+}
+
+func randomString() string {
+	return fmt.Sprintf("%x", rand.Uint32())
+}
+
+func createTable() string {
+	name := randomString()
+	_, err := dynamo.CreateTable(*tableD(name))
+	if err != nil {
+		panic(err)
 	}
-	if k.RangeKey != "5028" {
-		t.Fail()
+
+	return name
+}
+
+func getTable(server *dynamodb.Server, name string) *dynamodb.Table {
+	td, err := server.DescribeTable(name)
+	if err != nil {
+		panic(err)
 	}
-	if attrs[2].Type != dynamodb.TYPE_NUMBER {
+
+	pk, err := td.BuildPrimaryKey()
+	if err != nil {
+		panic(err)
+	}
+
+	return server.NewTable(name, pk)
+}
+
+func getRandomTable() *dynamodb.Table {
+	return getTable(dynamo, createTable())
+}
+
+func TestGetPut(t *testing.T) {
+	s := &_test{1000, 2000, "dog", 2147483647, 127, 32767, 2147483647, 9223372036854775807, 4294967295, 255, 65535, 4294967295, 18446744073709551615, []int16{1, 2, 3}, []uint16{32768, 32769, 32770}, []string{"apple", "orange", "banana"}}
+
+	tbl := getRandomTable()
+	err := PutItem(tbl, s)
+	if err != nil {
+		t.Error(err)
+	}
+
+	s2 := &_test{
+		ParentId: 1000,
+		Id:       2000}
+	err = GetItem(tbl, s2)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if !reflect.DeepEqual(s, s2) {
 		t.Fail()
 	}
 }
 
-func TestSchlongs(t *testing.T) {
-	// k := &dynamodb.Key{"900", "5028"}
-	attrMap := map[string]*dynamodb.Attribute{
-		"type": &dynamodb.Attribute{
-			Type:  dynamodb.TYPE_STRING,
-			Name:  "type",
-			Value: "sure"},
-		"argument": &dynamodb.Attribute{
-			Type:  dynamodb.TYPE_STRING,
-			Name:  "argument",
-			Value: "yep"},
-		"state": &dynamodb.Attribute{
-			Type:  dynamodb.TYPE_NUMBER,
-			Name:  "state",
-			Value: "2"}}
+type _state struct {
+	ParentId  int64 `dynamodb:"_hash"`
+	Id        int64 `dynamodb:"_range"`
+	State     int   `dynamodb:"state"`
+	Timestamp int64 `dynamodb:"timestamp"`
+}
 
-	t.Log("8===D")
+func TestConditionalUpdate(t *testing.T) {
+	tbl := getRandomTable()
+	s0 := &_state{1000, 2000, 1, 1392049274}
+	err := PutItem(tbl, s0)
+	if err != nil {
+		t.Error(err)
+	}
 
-	j := Job{IndexId: 900, Id: 5028}
-	attrs2struct(&j, attrMap)
+	s1 := &_state{1000, 2000, 2, 1392049399}
+	success, err := ConditionalUpdate(tbl, s1, s0)
+	if err != nil {
+		t.Error(err)
+	}
 
-	t.Log(j)
-	t.Fail()
+	if !success {
+		t.Fail()
+	}
+
+	s2 := &_state{1000, 2000, 3, 1392049461}
+	success, err = ConditionalUpdate(tbl, s2, s0)
+	if err == nil || success {
+		t.Fail()
+	}
 }

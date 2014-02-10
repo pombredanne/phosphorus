@@ -37,10 +37,10 @@ type Job struct {
 	Type     string   `dynamodb:"type",json:"-"`
 	Argument string   `dynamodb:"argument",json:"-"`
 	State    JobState `dynamodb:"state",json:"-"`
-	// Fn       *JobF    `json:"-"`
+	Fn       *JobF    `json:"-"`
 }
 
-func dynamize(s interface{}, t *dynamodb.Table) (k *dynamodb.Key, a []dynamodb.Attribute) {
+func Dynamize(s interface{}, t *dynamodb.Table) (k *dynamodb.Key, a []dynamodb.Attribute) {
 	k = &dynamodb.Key{}
 	a = []dynamodb.Attribute{}
 
@@ -53,6 +53,10 @@ func dynamize(s interface{}, t *dynamodb.Table) (k *dynamodb.Key, a []dynamodb.A
 			continue
 		}
 		vf := sv.Field(i)
+
+		if reflect.DeepEqual(reflect.Zero(sf.Type).Interface(), vf.Interface()) {
+			continue
+		}
 
 		switch tag {
 		case "_hash":
@@ -67,8 +71,8 @@ func dynamize(s interface{}, t *dynamodb.Table) (k *dynamodb.Key, a []dynamodb.A
 	return
 }
 
-func getStruct(s interface{}, t *dynamodb.Table) error {
-	key, _ := dynamize(s, t)
+func GetItem(t *dynamodb.Table, s interface{}) error {
+	key, _ := Dynamize(s, t)
 
 	attrMap, err := t.GetItem(key)
 	if err != nil {
@@ -76,6 +80,22 @@ func getStruct(s interface{}, t *dynamodb.Table) error {
 	}
 
 	return fillAttrs(s, attrMap)
+}
+
+func PutItem(t *dynamodb.Table, s interface{}) error {
+	key, attrs := Dynamize(s, t)
+	_, err := t.PutItem(key.HashKey, key.RangeKey, attrs)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func ConditionalUpdate(t *dynamodb.Table, update interface{}, expected interface{}) (bool, error) {
+	eKey, eAttrs := Dynamize(expected, t)
+	_, uAttrs := Dynamize(update, t)
+
+	return t.ConditionalUpdateAttributes(eKey, uAttrs, eAttrs)
 }
 
 func b64ify(vf reflect.Value) string {
@@ -253,6 +273,20 @@ func setNumericSet(v reflect.Value, setVals []string) error {
 	}
 	v.Set(slice)
 	return nil
+}
+
+func isZero(v reflect.Value) bool {
+	switch v.Kind() {
+	case reflect.Slice:
+		return v.Len() == 0
+	case reflect.String:
+		return v.String() == ""
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return v.Int() == 0
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return v.Uint() == 0
+	}
+	return false
 }
 
 // func setBinarySet(v reflect.Value, value []string) error {
