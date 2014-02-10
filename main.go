@@ -37,6 +37,8 @@ var commands = []*Command{
 	cmdSchema,
 	cmdIndex,
 	cmdHash,
+	cmdServer,
+	cmdNames,
 }
 
 var noBanner bool
