@@ -1,4 +1,4 @@
-package app
+package db
 
 import (
 	// "github.com/crowdmob/goamz/aws"
@@ -11,34 +11,34 @@ import (
 	"strconv"
 )
 
-type IdService interface {
-	NextId() int64
-}
+// type IdService interface {
+// 	NextId() int64
+// }
 
-type JobState int
+// type JobState int
 
-const (
-	JOB_WAIT JobState = iota
-	JOB_LOCK
-	JOB_DEAD
-	JOB_OK
-)
+// const (
+// 	JOB_WAIT JobState = iota
+// 	JOB_LOCK
+// 	JOB_DEAD
+// 	JOB_OK
+// )
 
-type JobDescription struct {
-	Name     string
-	Instance func(string) (JobF, error)
-}
+// type JobDescription struct {
+// 	Name     string
+// 	Instance func(string) (JobF, error)
+// }
 
-type JobF func() error
+// type JobF func() error
 
-type Job struct {
-	IndexId  int64    `dynamodb:"_hash"`
-	Id       int64    `dynamodb:"_range"`
-	Type     string   `dynamodb:"type",json:"-"`
-	Argument string   `dynamodb:"argument",json:"-"`
-	State    JobState `dynamodb:"state",json:"-"`
-	Fn       *JobF    `json:"-"`
-}
+// type Job struct {
+// 	IndexId  int64    `dynamodb:"_hash"`
+// 	Id       int64    `dynamodb:"_range"`
+// 	Type     string   `dynamodb:"type",json:"-"`
+// 	Argument string   `dynamodb:"argument",json:"-"`
+// 	State    JobState `dynamodb:"state",json:"-"`
+// 	Fn       *JobF    `json:"-"`
+// }
 
 func Dynamize(s interface{}, t *dynamodb.Table) (k *dynamodb.Key, a []dynamodb.Attribute) {
 	k = &dynamodb.Key{}
@@ -54,7 +54,7 @@ func Dynamize(s interface{}, t *dynamodb.Table) (k *dynamodb.Key, a []dynamodb.A
 		}
 		vf := sv.Field(i)
 
-		if reflect.DeepEqual(reflect.Zero(sf.Type).Interface(), vf.Interface()) {
+		if isZero(vf) {
 			continue
 		}
 
@@ -96,6 +96,12 @@ func ConditionalUpdate(t *dynamodb.Table, update interface{}, expected interface
 	_, uAttrs := Dynamize(update, t)
 
 	return t.ConditionalUpdateAttributes(eKey, uAttrs, eAttrs)
+}
+
+func AddAttributes(t *dynamodb.Table, s interface{}) error {
+	k, a := Dynamize(s, t)
+	_, err := t.AddAttributes(k, a)
+	return err
 }
 
 func b64ify(vf reflect.Value) string {
@@ -279,12 +285,8 @@ func isZero(v reflect.Value) bool {
 	switch v.Kind() {
 	case reflect.Slice:
 		return v.Len() == 0
-	case reflect.String:
-		return v.String() == ""
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return v.Int() == 0
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return v.Uint() == 0
+	default:
+		return reflect.DeepEqual(reflect.Zero(v.Type()).Interface(), v.Interface())
 	}
 	return false
 }

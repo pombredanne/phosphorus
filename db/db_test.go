@@ -1,4 +1,4 @@
-package app
+package db
 
 import (
 	crand "crypto/rand"
@@ -168,6 +168,38 @@ func TestConditionalUpdate(t *testing.T) {
 	s2 := &_state{1000, 2000, 3, 1392049461}
 	success, err = ConditionalUpdate(tbl, s2, s0)
 	if err == nil || success {
+		t.Fail()
+	}
+}
+
+type _set struct {
+	ParentId  int64    `dynamodb:"_hash"`
+	Id        int64    `dynamodb:"_range"`
+	RecordIds []uint32 `dynamodb:"record_ids"`
+}
+
+func TestAddAttributes(t *testing.T) {
+	tbl := getRandomTable()
+	s0 := &_set{1, 2, []uint32{3, 4, 5}}
+
+	err := AddAttributes(tbl, s0)
+	if err != nil {
+		t.Error(err)
+	}
+
+	s1 := &_set{1, 2, []uint32{6, 7}}
+	err = AddAttributes(tbl, s1)
+	if err != nil {
+		t.Error(err)
+	}
+
+	s2 := &_set{1, 2, []uint32{}}
+	err = GetItem(tbl, s2)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if !reflect.DeepEqual(s2.RecordIds, []uint32{3, 4, 5, 6, 7}) {
 		t.Fail()
 	}
 }
