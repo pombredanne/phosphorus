@@ -11,35 +11,6 @@ import (
 	"strconv"
 )
 
-// type IdService interface {
-// 	NextId() int64
-// }
-
-// type JobState int
-
-// const (
-// 	JOB_WAIT JobState = iota
-// 	JOB_LOCK
-// 	JOB_DEAD
-// 	JOB_OK
-// )
-
-// type JobDescription struct {
-// 	Name     string
-// 	Instance func(string) (JobF, error)
-// }
-
-// type JobF func() error
-
-// type Job struct {
-// 	IndexId  int64    `dynamodb:"_hash"`
-// 	Id       int64    `dynamodb:"_range"`
-// 	Type     string   `dynamodb:"type",json:"-"`
-// 	Argument string   `dynamodb:"argument",json:"-"`
-// 	State    JobState `dynamodb:"state",json:"-"`
-// 	Fn       *JobF    `json:"-"`
-// }
-
 func Dynamize(s interface{}, t *dynamodb.Table) (k *dynamodb.Key, a []dynamodb.Attribute) {
 	k = &dynamodb.Key{}
 	a = []dynamodb.Attribute{}
@@ -82,13 +53,31 @@ func GetItem(t *dynamodb.Table, s interface{}) error {
 	return fillAttrs(s, attrMap)
 }
 
-func PutItem(t *dynamodb.Table, s interface{}) error {
+func OverwriteItem(t *dynamodb.Table, s interface{}) error {
 	key, attrs := Dynamize(s, t)
 	_, err := t.PutItem(key.HashKey, key.RangeKey, attrs)
-	if err != nil {
-		return err
+	return err
+}
+
+func newKeyAttrs(t *dynamodb.Table, k *dynamodb.Key) []dynamodb.Attribute {
+	a := make([]dynamodb.Attribute, 1, 2)
+	a[0] = dynamodb.Attribute{
+		Name:   t.Key.KeyAttribute.Name,
+		Exists: "false"}
+	if k.RangeKey != "" {
+		a = append(a, dynamodb.Attribute{
+			Name:   t.Key.RangeAttribute.Name,
+			Exists: "false"})
 	}
-	return nil
+	return a
+}
+
+func CreateItem(t *dynamodb.Table, s interface{}) error {
+	key, attrs := Dynamize(s, t)
+	_, err := t.ConditionalPutItem(key.HashKey, key.RangeKey, attrs,
+		newKeyAttrs(t, key))
+
+	return err
 }
 
 func ConditionalUpdate(t *dynamodb.Table, update interface{}, expected interface{}) (bool, error) {

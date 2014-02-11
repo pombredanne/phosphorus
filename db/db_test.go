@@ -122,7 +122,7 @@ func TestGetPut(t *testing.T) {
 	s := &_test{1000, 2000, "dog", 2147483647, 127, 32767, 2147483647, 9223372036854775807, 4294967295, 255, 65535, 4294967295, 18446744073709551615, []int16{1, 2, 3}, []uint16{32768, 32769, 32770}, []string{"apple", "orange", "banana"}}
 
 	tbl := getRandomTable()
-	err := PutItem(tbl, s)
+	err := OverwriteItem(tbl, s)
 	if err != nil {
 		t.Error(err)
 	}
@@ -147,10 +147,25 @@ type _state struct {
 	Timestamp int64 `dynamodb:"timestamp"`
 }
 
+func TestCreate(t *testing.T) {
+	tbl := getRandomTable()
+	s0 := &_state{1000, 2000, 1, 1}
+	err := CreateItem(tbl, s0)
+	if err != nil {
+		t.Error(err)
+	}
+	s0.State = 4
+	err = CreateItem(tbl, s0)
+	if err == nil {
+		t.Log("Permitted overwrite!")
+		t.Fail()
+	}
+}
+
 func TestConditionalUpdate(t *testing.T) {
 	tbl := getRandomTable()
 	s0 := &_state{1000, 2000, 1, 1392049274}
-	err := PutItem(tbl, s0)
+	err := CreateItem(tbl, s0)
 	if err != nil {
 		t.Error(err)
 	}
