@@ -1,0 +1,208 @@
+
+
+@font-face {
+  font-family: 'Pathway Gothic One';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Pathway Gothic One'), local('PathwayGothicOne-Regular'), url(http://themes.googleusercontent.com/static/fonts/pathwaygothicone/v2/Lqv9ztoTUV8Q0FmQZzPqaCwPNT-0fYl5GOmbcpnDW5g.woff) format('woff');
+}
+
+body {
+/* font-family: 'Montserrat', sans-serif; */
+    background-color: #efefef;
+    /* background-color: #fff; */
+}
+
+#menuBar {
+    width: 800px;
+    margin: 0 auto;
+    overflow: auto;
+    /* border-bottom: 1px solid #000; */
+    /* background-color: blue; */
+}
+
+
+.container {
+    width: 800px;
+    margin: 0 auto;
+}
+
+.inner {
+    width: 400px;
+    padding: 0 20px;
+}
+
+@font-face {
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Montserrat-Regular'), url(http://themes.googleusercontent.com/static/fonts/montserrat/v4/zhcz-_WihjSQC0oHJ9TCYL3hpw3pgy2gAi-Ip7WPMi0.woff) format('woff');
+}
+
+h1#title {
+    font-family: 'Montserrat', sans-serif;
+    margin: 80px 0 0 0;
+    color: rgb(138,47,56);
+    font-size: 72px;
+  -webkit-font-feature-settings: "kern";
+  -moz-font-feature-settings: "kern";
+  font-feature-settings: "kern";
+}
+
+h2 {
+    font-family: 'Montserrat', sans-serif;
+  -webkit-font-feature-settings: "kern";
+  -moz-font-feature-settings: "kern";
+  font-feature-settings: "kern";
+}
+
+p {
+    font-family: 'Montserrat', sans-serif;
+    width: 70%;
+}
+
+
+#navLeft {
+    width: 600px;
+    float: left;
+}
+
+#navRight {
+    width: 200px;
+    float: right;
+    /* background-color: red; */
+}
+
+a {
+    text-decoration: none;
+}
+
+
+
+/* p {float:left;} */
+
+/* .cta { */
+/*     float: right */
+/* } */
+
+/* @font-face { */
+/*   font-family: 'Bitter'; */
+/*   font-style: normal; */
+/*   font-weight: 400; */
+/*   src: local('Bitter-Regular'), url(http://themes.googleusercontent.com/static/fonts/bitter/v5/2PcBT6-VmYhQCus-O11S5-vvDin1pK8aKteLpeZ5c0A.woff) format('woff'); */
+/* } */
+/* @font-face { */
+/*   font-family: 'Bitter'; */
+/*   font-style: normal; */
+/*   font-weight: 700; */
+/*   src: local('Bitter-Bold'), url(http://themes.googleusercontent.com/static/fonts/bitter/v5/evC1haE-MsorTl_A7_uSGbO3LdcAZYWl9Si6vvxL-qU.woff) format('woff'); */
+/* } */
+
+/* h1 { */
+/*     font-family: 'Bitter', serif; */
+/* } */
+
+
+h1.login {
+    /* margin-top: 100px; */
+    /* color: rgb(138,47,56); */
+    color: #fff;
+    font-family: 'Montserrat', sans-serif;
+    /* font-family: 'Pathway Gothic One', sans-serif; */
+  -webkit-font-feature-settings: "kern";
+  -moz-font-feature-settings: "kern";
+  font-feature-settings: "kern";
+}
+
+#diamond {
+    width: 220px;
+    height: 50px;
+    border-radius: 10px;
+    background-color: rgb(138,47,56);
+}
+
+#hi {
+    width: 100%;
+    padding: 100px 0 10px 0;
+    /* background-color: #fff; */
+
+    background-color: rgb(138,47,56);
+    /* -webkit-border-image: -webkit-gradient(linear, left top, left bottom, from(#000), to(#fff), 21 30  no-repeat; */
+
+}
+
+.footer {
+    margin: 100px;
+}
+
+label {
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+label {
+    display: block;
+    color: #444;
+    /* font-size: */
+}
+
+input[type=text],input[type=password] {
+    display: block;
+    margin-top: 5px;
+    border: none;
+    padding: 6px;
+    font-size: 14px;
+    padding: 7px 11px;
+}
+
+input[type=text]:focus, input[type=password]:focus {
+    outline: 1px solid #c46c6d;
+    outline-offset: 0px;
+    /* border: 1px solid #000; */
+    /* outline: none; */
+    /* border-bottom: 1px solid #555; */
+
+
+}
+
+input[type=submit] {
+    margin-top: 20px;
+    /* border-radius: 10px; */
+    padding: 7px 11px;
+    color: #fff;
+    /* font-family:   'Montserrat', sans-serif; */
+    background-color: #c46c6d;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    border-bottom: 2px solid #8a2f38;
+    font-size: 14px;
+}
+
+input[type=submit]:hover {
+    background-color: #c47d84;
+    /* border-top: 2px solid #8a2f38; */
+    /* border-bottom: none; */
+}
+
+input[type=submit]:focus {
+    outline: none;
+    border-top: 2px solid #8a2f38;
+    border-bottom: none;
+}
+
+#login {
+    margin-top: 20px;
+}
+
+.footer {
+    font-size: 12px;
+    color: #333;
+}
+
+
+
+#topbar {
+    width: 100%;
+    background-color: #8a2f38;
+}

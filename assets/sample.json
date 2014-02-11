@@ -1,0 +1,71 @@
+{
+    "MaxProcs": 5,
+    "AWSRegion": "us-east-1",
+    "AccessKeyId": "",
+    "SecretAccessKey": "",
+    "Source": {
+	"S3": {
+	    "Bucket": "willstclair-phosphorus",
+	    "Prefix": "source/"
+	},
+	"Table": {
+	    "Name": "phosphorus-source-20140130",
+	    "ReadCapacityUnits": 10,
+	    "WriteCapacityUnits": 10
+	},
+	"IdColumn": 1,
+	"SourceFields": [
+	    {
+		"Name": "last_name",
+		"Column": 2,
+		"ShortName": "ln"
+	    },
+	    {
+		"Name": "first_name",
+		"Column": 3,
+		"ShortName": "fn"
+	    },
+	    {
+		"Name": "birth_year",
+		"Column": 4,
+		"ShortName": "by"
+	    },
+	    {
+		"Name": "birth_month",
+		"Column": 5,
+		"ShortName": "bm"
+	    },
+	    {
+		"Name": "birth_day",
+		"Column": 6,
+		"ShortName": "bd"
+	    }
+	],
+	"Delimiter": "\t"
+    },
+    "Index": {
+	"S3": {
+	    "Bucket": "willstclair-phosphorus",
+	    "Prefix": "index/"
+	},
+	"Table": {
+	    "Name": "phosphorus-index-20140130",
+	    "ReadCapacityUnits": 10,
+	    "WriteCapacityUnits": 10
+	},
+	"IndexFields": [
+	    {
+		"Names": ["last_name"]
+	    },
+	    {
+		"Names": ["first_name"]
+	    },
+	    {
+		"Names": ["birth_year"]
+	    },
+	    {
+		"Names": ["birth_month", "birth_day"]
+	    }
+	]
+    }
+}
