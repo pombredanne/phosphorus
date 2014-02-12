@@ -1,12 +1,18 @@
 package main
 
 import (
+	"fmt"
+	"github.com/crowdmob/goamz/aws"
+	"github.com/crowdmob/goamz/dynamodb"
 	"html/template"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
+	"willstclair.com/phosphorus/app"
+	"willstclair.com/phosphorus/id"
 )
 
 var cmdServer = &Command{
@@ -16,125 +22,112 @@ var cmdServer = &Command{
 }
 
 var (
-	serverWebDir string // -web flag
+	serverWebDir  string // -web flag
+	serverUrlRoot string // -url flag
+
 )
+
+var t = make(map[string]*template.Template)
 
 func init() {
 	cmdServer.Flag.StringVar(&serverWebDir, "web", "", "")
+	cmdServer.Flag.StringVar(&serverUrlRoot, "url", "", "")
+}
+
+func initTemplates() {
+	joined := filepath.Join(serverWebDir, "html/*.html")
+	tmplDir, err := filepath.Abs(joined)
+	if err != nil {
+		panic(err)
+	}
+
+	templates, err := filepath.Glob(tmplDir)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, filename := range templates {
+		bn := filepath.Base(filename)
+		if bn == "layout.html" {
+			continue
+		}
+		t[bn] = template.Must(template.ParseFiles(filename,
+			filepath.Join(serverWebDir, "html", "layout.html")))
+	}
+
 }
 
 func runServer(cmd *Command, args []string) {
-	d, _ := filepath.Abs(serverWebDir)
-	serverWebDir = d
+	initTemplates()
+	log.Println(t)
 
-	http.HandleFunc("/", webHandler)
-	http.HandleFunc("/login", loginHandler)
-	http.HandleFunc("/app", appHandler)
+	exp := time.Now().Add(60 * time.Minute)
+	auth, err := aws.EnvAuth()
+	if err != nil {
+		auth, err = aws.GetAuth("", "", "", exp)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	dynamo := &dynamodb.Server{auth, aws.USEast}
+	sessionTbl := dynTable(dynamo, "session")
+	accountTbl := dynTable(dynamo, "account")
+
+	idGen := id.NewGenerator(1)
+
+	http.HandleFunc("/enroll", app.CreateAccountHandler(t, accountTbl, sessionTbl, idGen))
+	http.HandleFunc("/login", app.LoginHandler(t, accountTbl, sessionTbl, idGen))
+	http.HandleFunc("/u/", app.DashboardHandler(t, accountTbl, sessionTbl))
+
 	http.HandleFunc("/_js", jsHandler)
 	http.HandleFunc("/_css", cssHandler)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-func appHandler(w http.ResponseWriter, r *http.Request) {
-	tmplPath := filepath.Join(serverWebDir, "html/*.gohtml")
-	log.Println(tmplPath)
-	j, err := template.ParseGlob(tmplPath)
+// func indexHandler(w http.ResponseWriter, r *http.Request) {
+// 	render(w, "index")
+// }
+
+// func loginHandler(w http.ResponseWriter, r *http.Request) {
+// 	render(w, "login")
+// }
+
+func squirtGlob(ext string, w http.ResponseWriter) {
+	files, err := filepath.Glob(
+		filepath.Join(
+			serverWebDir,
+			fmt.Sprintf("/%s/*.%s", ext, ext)))
 	if err != nil {
 		panic(err)
 	}
 
-	// title := r.URL.Path[1:]
-	p := &Page{"test"}
-	err = j.ExecuteTemplate(w, "app.gohtml", p)
-	if err != nil {
-		panic(err)
-	}
-
-}
-
-func webHandler(w http.ResponseWriter, r *http.Request) {
-	tmplPath := filepath.Join(serverWebDir, "html/*.gohtml")
-	log.Println(tmplPath)
-	j, err := template.ParseGlob(tmplPath)
-	if err != nil {
-		panic(err)
-	}
-
-	// title := r.URL.Path[1:]
-	p := &Page{"test"}
-	err = j.ExecuteTemplate(w, "index.gohtml", p)
-	if err != nil {
-		panic(err)
-	}
-	// fmt.Fprintf(w, "FML")
-	// log.Println(j.Lookup("index.html"))
-
-	// j.Lookup("index.html").Execute(w, p)
-}
-
-func loginHandler(w http.ResponseWriter, r *http.Request) {
-	tmplPath := filepath.Join(serverWebDir, "html/*.gohtml")
-	log.Println(tmplPath)
-	j, err := template.ParseGlob(tmplPath)
-	if err != nil {
-		panic(err)
-	}
-	p := &Page{"test"}
-	err = j.ExecuteTemplate(w, "login.gohtml", p)
-	if err != nil {
-		panic(err)
+	for _, filename := range files {
+		file, err := os.Open(filename)
+		if err != nil {
+			panic(err)
+		}
+		_, err = io.Copy(w, file)
+		if err != nil {
+			panic(err)
+		}
+		file.Close()
 	}
 }
 
 func jsHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("js")
 	w.Header().Add("Content-Type", "application/javascript")
-
-	files, err := filepath.Glob(filepath.Join(serverWebDir, "/js/*.js"))
-	if err != nil {
-		panic(err)
-	}
-
-	for _, filename := range files {
-		file, err := os.Open(filename)
-		if err != nil {
-			panic(err)
-		}
-		_, err = io.Copy(w, file)
-		if err != nil {
-			panic(err)
-		}
-		file.Close()
-	}
-	// fmt.Fprintf(w, `alert("lol");`)
+	squirtGlob("js", w)
 }
 
 func cssHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("css")
 	w.Header().Add("Content-Type", "text/css")
-	files, err := filepath.Glob(filepath.Join(serverWebDir, "/css/*.css"))
+	squirtGlob("css", w)
+}
+
+func render(w http.ResponseWriter, tmpl string) {
+	err := t[tmpl+".html"].ExecuteTemplate(w, "layout", nil)
 	if err != nil {
 		panic(err)
 	}
-
-	for _, filename := range files {
-		log.Println(filename)
-		file, err := os.Open(filename)
-		if err != nil {
-			panic(err)
-		}
-		_, err = io.Copy(w, file)
-		if err != nil {
-			panic(err)
-		}
-		file.Close()
-	}
 }
-
-type Page struct {
-	Title string
-}
-
-// type Stylesheet struct {
-
-// }
