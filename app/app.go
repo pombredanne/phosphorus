@@ -2,11 +2,16 @@ package app
 
 import (
 	"code.google.com/p/go.crypto/scrypt"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha1"
 	"crypto/subtle"
 	"encoding/base64"
+	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"github.com/crowdmob/goamz/dynamodb"
+	"github.com/crowdmob/goamz/s3"
 	"html/template"
 	"log"
 	"net/http"
@@ -71,8 +76,10 @@ type Session struct {
 
 func NewSession(username string, idGen *id.Generator) *Session {
 	expires := time.Now().UTC().Add(12 * time.Hour)
+	id := idGen.SafeId()
+	log.Println("new session id %d", id)
 	return &Session{
-		Id:       idGen.SafeId(),
+		Id:       id,
 		Username: username,
 		Expires:  expires.Unix()}
 }
@@ -168,7 +175,7 @@ func LoginHandler(tpl map[string]*template.Template, accountTbl *dynamodb.Table,
 }
 
 func DashboardHandler(tpl map[string]*template.Template,
-	accountTbl *dynamodb.Table, sessionTbl *dynamodb.Table) func(http.ResponseWriter, *http.Request) {
+	accountTbl *dynamodb.Table, sessionTbl *dynamodb.Table, idGen *id.Generator, bucket *s3.Bucket) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			w.WriteHeader(405)
@@ -211,9 +218,45 @@ func DashboardHandler(tpl map[string]*template.Template,
 			return
 		}
 
+		if r.URL.Path[len(fmt.Sprintf("/u/%s", account.Username)):] == "/source" {
+			handleSource(w, r, tpl, account, bucket)
+			return
+		}
+
+		listResp, err := bucket.List(account.Username+"/", "", "", 0)
+		if err != nil {
+			w.WriteHeader(500)
+			fmt.Fprintf(w, "Problem with S3")
+			return
+		}
+		expires := time.Now().UTC().Add(5 * time.Minute)
+		policy := fmt.Sprintf(s3policy, account.Username,
+			expires.Format("2006-01-02T15:04:05.000Z"))
+		log.Println(policy)
+		encodedPolicy := base64.StdEncoding.EncodeToString([]byte(policy))
+
+		mac := hmac.New(sha1.New, []byte(sessionTbl.Server.Auth.SecretKey))
+		mac.Write([]byte(encodedPolicy))
+		sig := mac.Sum(nil)
+
 		// hey we're ok
-		tpl["dashboard.html"].ExecuteTemplate(w, "layout", account)
+		tpl["dashboard.html"].ExecuteTemplate(w, "layout", &_hm{
+			Keys:        listResp.Contents,
+			Filename:    fmt.Sprintf("%s/%d", account.Username, idGen.SafeId()),
+			Username:    account.Username,
+			Policy:      encodedPolicy,
+			Signature:   base64.StdEncoding.EncodeToString(sig),
+			AccessKeyId: sessionTbl.Server.Auth.AccessKey})
 	}
+}
+
+type _hm struct {
+	Username    string
+	Policy      string
+	Signature   string
+	AccessKeyId string
+	Filename    string
+	Keys        []s3.Key
 }
 
 func cookieAndGo(w http.ResponseWriter, username string, sessionTbl *dynamodb.Table, idGen *id.Generator) {
@@ -228,4 +271,109 @@ func cookieAndGo(w http.ResponseWriter, username string, sessionTbl *dynamodb.Ta
 	w.Header().Add("Set-Cookie", session.Cookie().String())
 	w.Header().Add("Location", "/u/"+username)
 	w.WriteHeader(303)
+}
+
+var s3policy = `{"conditions":[["starts-with","$key","%s/"],{"bucket":"phosphorus-upload"},{"acl":"private"},["starts-with","$Content-Type","text/csv"],{"success_action_status":"200"}],"expiration":"%s"}`
+
+func handleSource(w http.ResponseWriter, r *http.Request, tpl map[string]*template.Template, account *Account, bucket *s3.Bucket) {
+	rc, err := bucket.GetReader(r.URL.Query().Get("key"))
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Fprintf(w, "Problem opening file")
+		return
+	}
+	defer rc.Close()
+	rdr := csv.NewReader(rc)
+
+	records := make([][]string, 0, 10)
+
+	for i := 0; i < 10; i++ {
+		record, err := rdr.Read()
+		if err != nil {
+			w.WriteHeader(500)
+			fmt.Fprintf(w, "Problem reading file")
+			return
+		}
+		records = append(records, record)
+	}
+
+	tpl["source.html"].ExecuteTemplate(w, "layout", &_sourceDef{
+		Rows:    records,
+		Columns: rdr.FieldsPerRecord,
+	})
+}
+
+type _sourceDef struct {
+	Columns int
+	Rows    [][]string
+}
+
+func UploadTemplateHandler(accountTbl *dynamodb.Table, sessionTbl *dynamodb.Table, idGen *id.Generator) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			w.WriteHeader(405)
+			return
+		}
+
+		cookie, err := r.Cookie("phosphorus")
+		if err != nil {
+			w.WriteHeader(400)
+			fmt.Fprintf(w, "No token")
+			return
+		}
+
+		sessionId, err := strconv.ParseInt(cookie.Value, 10, 64)
+		if err != nil {
+			w.WriteHeader(400)
+			fmt.Fprintf(w, "Bad token")
+			return
+		}
+
+		session := &Session{Id: sessionId}
+		err = db.GetItem(sessionTbl, session)
+		if err != nil {
+			w.WriteHeader(400)
+			fmt.Fprintf(w, "Token not found")
+			return
+		}
+
+		if !session.Valid() {
+			w.WriteHeader(400)
+			fmt.Fprintf(w, "Old token")
+			return
+		}
+
+		account := &Account{Username: session.Username}
+		err = db.GetItem(accountTbl, account)
+		if err != nil {
+			w.WriteHeader(500)
+			fmt.Fprintf(w, "Account unavailable")
+			return
+		}
+
+		expires := time.Now().UTC().Add(1 * time.Minute)
+		policy := fmt.Sprintf(s3policy, account.Username,
+			expires.Format("2006-01-02T15:04:05.000Z"))
+		log.Println(policy)
+		encodedPolicy := base64.StdEncoding.EncodeToString([]byte(policy))
+
+		mac := hmac.New(sha1.New, []byte(sessionTbl.Server.Auth.SecretKey))
+		mac.Write([]byte(encodedPolicy))
+		sig := mac.Sum(nil)
+
+		w.Header().Add("Content-Type", "application/json")
+		enc := json.NewEncoder(w)
+		enc.Encode(&_uploadForm{
+			Key:            fmt.Sprintf("%s/%d", account.Username, idGen.SafeId()),
+			AWSAccessKeyId: sessionTbl.Server.Auth.AccessKey,
+			Policy:         encodedPolicy,
+			Signature:      base64.StdEncoding.EncodeToString(sig)})
+	}
+}
+
+type _uploadForm struct {
+	Key            string `json:"key"`
+	AWSAccessKeyId string `json:"AWSAccessKeyId"`
+	Policy         string `json:"policy"`
+	Signature      string `json:"signature"`
 }

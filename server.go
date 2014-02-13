@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/dynamodb"
+	"github.com/crowdmob/goamz/s3"
 	"html/template"
 	"io"
 	"log"
@@ -74,26 +75,23 @@ func runServer(cmd *Command, args []string) {
 	sessionTbl := dynTable(dynamo, "session")
 	accountTbl := dynTable(dynamo, "account")
 
+	s3server := s3.New(auth, aws.USEast)
+	bucket := &s3.Bucket{s3server, "phosphorus-upload"}
+
 	idGen := id.NewGenerator(1)
 
 	http.HandleFunc("/enroll", app.CreateAccountHandler(t, accountTbl, sessionTbl, idGen))
 	http.HandleFunc("/login", app.LoginHandler(t, accountTbl, sessionTbl, idGen))
-	http.HandleFunc("/u/", app.DashboardHandler(t, accountTbl, sessionTbl))
+	http.HandleFunc("/u/", app.DashboardHandler(t, accountTbl, sessionTbl, idGen, bucket))
+
+	http.HandleFunc("/_form", app.UploadTemplateHandler(accountTbl, sessionTbl, idGen))
 
 	http.HandleFunc("/_js", jsHandler)
 	http.HandleFunc("/_css", cssHandler)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-// func indexHandler(w http.ResponseWriter, r *http.Request) {
-// 	render(w, "index")
-// }
-
-// func loginHandler(w http.ResponseWriter, r *http.Request) {
-// 	render(w, "login")
-// }
-
-func squirtGlob(ext string, w http.ResponseWriter) {
+func catGlob(ext string, w http.ResponseWriter) {
 	files, err := filepath.Glob(
 		filepath.Join(
 			serverWebDir,
@@ -117,12 +115,12 @@ func squirtGlob(ext string, w http.ResponseWriter) {
 
 func jsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/javascript")
-	squirtGlob("js", w)
+	catGlob("js", w)
 }
 
 func cssHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "text/css")
-	squirtGlob("css", w)
+	catGlob("css", w)
 }
 
 func render(w http.ResponseWriter, tmpl string) {
