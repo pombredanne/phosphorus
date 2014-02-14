@@ -4,17 +4,10 @@
 
 {{define "body"}}
 <h1>{{.Username}}'s dashboard</h1>
-
-<!-- <h2>Your files</h2>
-{{range .Keys}}
-<p>{{.Key}}</p>
-{{end}}
-<a href="/u/{{.Username}}/analyze">Analyze files</a> -->
-
-<h2>Upload lots of files</h2>
-<input type="file" name="file" id="filePicker" multiple="true" />
-<button id="uploadButton">Upload</button>
-<div id="progressBars">
+<div id="uploads">
+  <h2>Upload files</h2>
+  <input type="file" name="file" id="filePicker" multiple="true" />
+  <button id="uploadButton">Upload</button>
+  <div id="progressBars"></div>
 </div>
-
 {{end}}

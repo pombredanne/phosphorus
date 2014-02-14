@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/dynamodb"
-	"github.com/crowdmob/goamz/s3"
 	"html/template"
 	"io"
 	"log"
@@ -23,19 +22,15 @@ var cmdServer = &Command{
 }
 
 var (
-	serverWebDir  string // -web flag
-	serverUrlRoot string // -url flag
-
+	serverWebDir string // -web flag
 )
-
-var t = make(map[string]*template.Template)
 
 func init() {
 	cmdServer.Flag.StringVar(&serverWebDir, "web", "", "")
-	cmdServer.Flag.StringVar(&serverUrlRoot, "url", "", "")
 }
 
-func initTemplates() {
+func getTemplates() map[string]*template.Template {
+	t := make(map[string]*template.Template)
 	joined := filepath.Join(serverWebDir, "html/*.html")
 	tmplDir, err := filepath.Abs(joined)
 	if err != nil {
@@ -55,12 +50,11 @@ func initTemplates() {
 		t[bn] = template.Must(template.ParseFiles(filename,
 			filepath.Join(serverWebDir, "html", "layout.html")))
 	}
-
+	return t
 }
 
 func runServer(cmd *Command, args []string) {
-	initTemplates()
-	log.Println(t)
+	app.Templates = getTemplates()
 
 	exp := time.Now().Add(60 * time.Minute)
 	auth, err := aws.EnvAuth()
@@ -72,19 +66,29 @@ func runServer(cmd *Command, args []string) {
 	}
 
 	dynamo := &dynamodb.Server{auth, aws.USEast}
-	sessionTbl := dynTable(dynamo, "session")
-	accountTbl := dynTable(dynamo, "account")
 
-	s3server := s3.New(auth, aws.USEast)
-	bucket := &s3.Bucket{s3server, "phosphorus-upload"}
+	env := &app.Env{
+		Sessions: dynTable(dynamo, "session"),
+		Accounts: dynTable(dynamo, "account"),
+		IdGen:    id.NewGenerator(1),
+		Auth:     &auth}
 
-	idGen := id.NewGenerator(1)
+	for _, r := range app.Resources {
+		r.Env = env
+		http.Handle(r.Path, r)
+	}
 
-	http.HandleFunc("/enroll", app.CreateAccountHandler(t, accountTbl, sessionTbl, idGen))
-	http.HandleFunc("/login", app.LoginHandler(t, accountTbl, sessionTbl, idGen))
-	http.HandleFunc("/u/", app.DashboardHandler(t, accountTbl, sessionTbl, idGen, bucket))
+	// http.Handle("/enroll", &app.Handler{
+	// 	Env:      env,
+	// 	Methods:  []string{"GET"},
+	// 	Template: templates["enroll.html"],
+	// 	Run:      app.Enroll})
 
-	http.HandleFunc("/_form", app.UploadTemplateHandler(accountTbl, sessionTbl, idGen))
+	// http.HandleFunc("/enroll", app.GetPost(app.Enroll(env)))
+	// http.HandleFunc("/login", app.GetPost(app.Login(env)))
+
+	// http.HandleFunc("/u/", app.Get(app.Authed(env, app.Dashboard)))
+	// http.HandleFunc("/_form", app.Get(app.Authed(env, app.UploadToken)))
 
 	http.HandleFunc("/_js", jsHandler)
 	http.HandleFunc("/_css", cssHandler)
@@ -121,11 +125,4 @@ func jsHandler(w http.ResponseWriter, r *http.Request) {
 func cssHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "text/css")
 	catGlob("css", w)
-}
-
-func render(w http.ResponseWriter, tmpl string) {
-	err := t[tmpl+".html"].ExecuteTemplate(w, "layout", nil)
-	if err != nil {
-		panic(err)
-	}
 }
