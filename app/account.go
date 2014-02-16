@@ -2,13 +2,15 @@ package app
 
 import (
 	"code.google.com/p/go.crypto/scrypt"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
+	"encoding/binary"
 	"fmt"
 	"net/http"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 	"willstclair.com/phosphorus/db"
@@ -31,6 +33,12 @@ func (a *Account) Authenticate(password string) (err error) {
 	return
 }
 
+var hmacKey []byte
+
+func init() {
+	hmacKey, _ = scrypt.Key([]byte("very secure"), []byte{}, 1<<18, 8, 1, 16)
+}
+
 type Session struct {
 	Id       int64  `dynamodb:"_hash"`
 	Username string `dynamodb:"username"`
@@ -45,15 +53,40 @@ func NewSession(username string, id int64) *Session {
 		Expires:  expires.Unix()}
 }
 
+func cookieMac(i int64) []byte {
+	sessionId := make([]byte, 8)
+	binary.BigEndian.PutUint64(sessionId, uint64(i))
+
+	sessionId = append(sessionId,
+		hmac.New(sha256.New, hmacKey).Sum(sessionId)...)
+	return sessionId
+}
+
 func (s *Session) Cookie() *http.Cookie {
 	return &http.Cookie{
 		Name:    "phosphorus",
-		Value:   strconv.FormatInt(s.Id, 10),
+		Value:   base64.StdEncoding.EncodeToString(cookieMac(s.Id)),
 		Expires: time.Unix(s.Expires, 0)}
 }
 
 func (s *Session) Valid() bool {
 	return s.Expires > time.Now().UTC().Unix()
+}
+
+func ReadCookie(c string) (s *Session, err error) {
+	cookie, err := base64.StdEncoding.DecodeString(c)
+	if err != nil {
+		return
+	}
+
+	sessionId := int64(binary.BigEndian.Uint64(cookie[0:8]))
+	if !hmac.Equal(cookieMac(sessionId), cookie) {
+		err = fmt.Errorf("MAC validation failed")
+		return
+	}
+
+	s = &Session{Id: sessionId}
+	return
 }
 
 // resources
@@ -131,12 +164,12 @@ func Authed(fn Handler) Handler {
 			return
 		}
 
-		sessionId, err := strconv.ParseInt(cookie.Value, 10, 64)
+		session, err := ReadCookie(cookie.Value)
 		if err != nil {
 			return
 		}
 
-		session := &Session{Id: sessionId}
+		// session := &Session{Id: sessionId}
 		err = db.GetItem(e.Sessions, session)
 		if err != nil {
 			return
@@ -154,7 +187,7 @@ func Authed(fn Handler) Handler {
 		}
 		m["session"] = session
 		m["account"] = account
-
+		log.Println("dong")
 		return fn(r, e, m)
 	}
 }

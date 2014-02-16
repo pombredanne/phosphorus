@@ -1,7 +1,5 @@
 # Phosphorus
 
-*N.B.: This is a to-do list.*
-
 ## Install
 
 	go install willstclair.com/phosphorus

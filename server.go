@@ -78,18 +78,6 @@ func runServer(cmd *Command, args []string) {
 		http.Handle(r.Path, r)
 	}
 
-	// http.Handle("/enroll", &app.Handler{
-	// 	Env:      env,
-	// 	Methods:  []string{"GET"},
-	// 	Template: templates["enroll.html"],
-	// 	Run:      app.Enroll})
-
-	// http.HandleFunc("/enroll", app.GetPost(app.Enroll(env)))
-	// http.HandleFunc("/login", app.GetPost(app.Login(env)))
-
-	// http.HandleFunc("/u/", app.Get(app.Authed(env, app.Dashboard)))
-	// http.HandleFunc("/_form", app.Get(app.Authed(env, app.UploadToken)))
-
 	http.HandleFunc("/_js", jsHandler)
 	http.HandleFunc("/_css", cssHandler)
 	log.Fatal(http.ListenAndServe(":8080", nil))
