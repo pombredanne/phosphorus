@@ -37,7 +37,6 @@ var commands = []*Command{
 	cmdSchema,
 	cmdIndex,
 	cmdHash,
-	cmdNames,
 }
 
 var noBanner bool
@@ -54,29 +53,17 @@ func (c *Command) Name() string {
 
 func (c *Command) Usage() {
 	fmt.Fprintf(os.Stderr, "usage: %s\n\n", c.UsageLine)
-	// fmt.Fprintf(os.Stderr, "%s\n", strings.TrimSpace(c.Long))
 	os.Exit(2)
 }
 
-// func usage() {
-// 	fmt.Fprintf(os.Stderr, "usage: phosphorus [args] command [args]\n\n")
-// 	os.Exit(2)
-// }
-
 func main() {
 	flag.Parse()
-	// flag.Usage = usage
 
-	runtime.GOMAXPROCS(5)
-
-	// log.SetFlags(0)
+	runtime.GOMAXPROCS(maxprocs)
 
 	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = 100
 
 	args := flag.Args()
-	// if len(args) < 1 {
-	// 	usage()
-	// }
 
 	if !noBanner {
 		fmt.Fprintf(os.Stderr, BANNER)
@@ -98,10 +85,10 @@ func main() {
 	}
 }
 
-// func init() {
-// 	flag.BoolVar(&noBanner, "nobanner", false, "do not show banner")
-// 	flag.IntVar(&maxprocs, "p", 2, "go MAXPROCS")
-// }
+func init() {
+	flag.BoolVar(&noBanner, "nobanner", false, "do not show banner")
+	flag.IntVar(&maxprocs, "p", 2, "go MAXPROCS")
+}
 
 func msg(resource, disposition string) {
 	log.Printf("%s: %s\n", resource, disposition)
