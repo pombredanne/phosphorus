@@ -17,7 +17,7 @@ type _schema struct {
 	fixture []uint32
 }
 
-func (s *_schema) Sign(map[string]string) ([]uint32, error) {
+func (s *_schema) Sign(map[string]string, schema.RandomProvider) ([]uint32, error) {
 	return s.fixture, nil
 }
 
@@ -27,6 +27,12 @@ func (s *_schema) SignatureLen() int {
 
 func (s *_schema) ChunkBits() int {
 	return 8
+}
+
+type _random struct{}
+
+func (r *_random) Get(int64) float64 {
+	return 0.0
 }
 
 func TestBinkey(t *testing.T) {
@@ -45,14 +51,15 @@ func TestDynamoDBIndex(t *testing.T) {
 	sourceT := getRandomTable()
 	indexT := getRandomTable()
 	ix := NewDynamoDBIndex(s, indexT, sourceT)
+	r := &_random{}
 
-	err := ix.Write(rec1)
+	err := ix.Write(rec1, r)
 	if err != nil {
 		t.Error(err)
 	}
 
 	s.fixture = sig2
-	err = ix.Write(rec2)
+	err = ix.Write(rec2, r)
 	if err != nil {
 		t.Error(err)
 	}
@@ -61,7 +68,7 @@ func TestDynamoDBIndex(t *testing.T) {
 
 	s.fixture = sig3
 
-	results, err := ix.Query(map[string]string{})
+	results, err := ix.Query(map[string]string{}, r)
 	if len(results) != 2 {
 		t.Error("no results")
 	}
