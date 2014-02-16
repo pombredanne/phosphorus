@@ -7,12 +7,12 @@ import (
 	"github.com/crowdmob/goamz/dynamodb"
 	s3_ "github.com/crowdmob/goamz/s3"
 	"github.com/crowdmob/goamz/s3/s3test"
+	"github.com/wsc/phosphorus/schema"
 	"math"
 	"math/big"
 	"math/rand"
 	"testing"
 	"time"
-	"willstclair.com/phosphorus/schema"
 )
 
 var region aws.Region

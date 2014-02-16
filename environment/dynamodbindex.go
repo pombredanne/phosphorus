@@ -5,12 +5,12 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"github.com/crowdmob/goamz/dynamodb"
+	"github.com/wsc/phosphorus/schema"
 	"log"
 	"math"
 	"sort"
 	"sync"
 	"time"
-	"willstclair.com/phosphorus/schema"
 )
 
 const SET_ATTR = "ids"
