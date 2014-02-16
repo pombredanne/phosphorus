@@ -37,7 +37,6 @@ var commands = []*Command{
 	cmdSchema,
 	cmdIndex,
 	cmdHash,
-	cmdServer,
 	cmdNames,
 }
 
