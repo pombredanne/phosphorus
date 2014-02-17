@@ -2,7 +2,7 @@
 
 ## Install
 
-	go install willstclair.com/phosphorus
+	go install github.com/wsc/phosphorus
 
 ## Usage
 
